@@ -852,35 +852,99 @@ function shootBall(){
   ab();
 }
 
-// Audio: crowd cheering / booing using Web Audio API (no external files)
+// Audio: realistic crowd cheering / booing using layered Web Audio synthesis
 function playCrowdSound(cheer){
   try{
-    const ac=new(window.AudioContext||window.webkitAudioContext)(),dur=cheer?1.8:1.2,sr=ac.sampleRate;
-    const buf=ac.createBuffer(1,sr*dur,sr),d=buf.getChannelData(0);
+    const ac=new(window.AudioContext||window.webkitAudioContext)(),now=ac.currentTime;
+    const dur=cheer?2.5:1.8,master=ac.createGain();
+    master.gain.value=0.5;master.connect(ac.destination);
+
     if(cheer){
-      // Cheering: filtered noise with rising pitch bursts
-      for(let i=0;i<d.length;i++){
-        const t=i/sr,env=Math.min(t*8,1)*Math.max(0,1-t/dur);
-        d[i]=(Math.random()*2-1)*0.3*env;
-        // Add tonal "woo" overtones
-        d[i]+=Math.sin(t*800*(1+t*0.5))*0.12*env;
-        d[i]+=Math.sin(t*1200*(1+t*0.3))*0.08*env;
-        d[i]+=Math.sin(t*400+Math.sin(t*6)*100)*0.1*env;
+      // Layer 1: Crowd noise (broad filtered noise = many voices)
+      for(let v=0;v<8;v++){
+        const buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=buf.getChannelData(0);
+        const freq=600+Math.random()*2400,phase=Math.random()*Math.PI*2;
+        for(let i=0;i<d.length;i++){
+          const t=i/ac.sampleRate;
+          d[i]=(Math.random()*2-1)*0.15;
+          // Simulated voice: vowel-like formants with vibrato
+          d[i]+=Math.sin(t*(freq+Math.sin(t*5+phase)*80))*0.06;
+          d[i]+=Math.sin(t*(freq*1.5+Math.sin(t*7+phase)*60))*0.03;
+        }
+        const src=ac.createBufferSource();src.buffer=buf;
+        const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=800+Math.random()*2000;bp.Q.value=0.8+Math.random()*1.5;
+        const env=ac.createGain();
+        env.gain.setValueAtTime(0,now);
+        env.gain.linearRampToValueAtTime(0.12,now+0.15+Math.random()*0.2);
+        env.gain.setValueAtTime(0.12,now+dur*0.6);
+        env.gain.linearRampToValueAtTime(0,now+dur);
+        src.connect(bp);bp.connect(env);env.connect(master);
+        src.start(now+Math.random()*0.1);src.stop(now+dur);
+      }
+      // Layer 2: Clapping (short bursts of filtered noise)
+      for(let c=0;c<12;c++){
+        const cDur=0.03+Math.random()*0.02;
+        const buf=ac.createBuffer(1,ac.sampleRate*cDur,ac.sampleRate),d=buf.getChannelData(0);
+        for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*0.4;
+        const src=ac.createBufferSource();src.buffer=buf;
+        const hp=ac.createBiquadFilter();hp.type='highpass';hp.frequency.value=2000+Math.random()*3000;
+        const env=ac.createGain();env.gain.value=0.15+Math.random()*0.1;
+        src.connect(hp);hp.connect(env);env.connect(master);
+        src.start(now+0.2+Math.random()*1.5);
+      }
+      // Layer 3: Whistles (sine waves with slight warble)
+      for(let w=0;w<2;w++){
+        const osc=ac.createOscillator();osc.type='sine';
+        osc.frequency.setValueAtTime(2800+Math.random()*600,now);
+        const lfo=ac.createOscillator();lfo.frequency.value=5+Math.random()*3;
+        const lfoGain=ac.createGain();lfoGain.gain.value=50;
+        lfo.connect(lfoGain);lfoGain.connect(osc.frequency);
+        const env=ac.createGain();
+        const wStart=now+0.3+Math.random()*0.8,wDur=0.3+Math.random()*0.4;
+        env.gain.setValueAtTime(0,wStart);
+        env.gain.linearRampToValueAtTime(0.04,wStart+0.05);
+        env.gain.setValueAtTime(0.04,wStart+wDur-0.05);
+        env.gain.linearRampToValueAtTime(0,wStart+wDur);
+        osc.connect(env);env.connect(master);
+        osc.start(wStart);osc.stop(wStart+wDur);lfo.start(wStart);lfo.stop(wStart+wDur);
       }
     }else{
-      // Booing: low rumble with descending tone
-      for(let i=0;i<d.length;i++){
-        const t=i/sr,env=Math.min(t*6,1)*Math.max(0,1-t/dur);
-        d[i]=(Math.random()*2-1)*0.25*env;
-        d[i]+=Math.sin(t*180*(1-t*0.3))*0.2*env;
-        d[i]+=Math.sin(t*120*(1-t*0.2))*0.15*env;
+      // BOOING: low sustained crowd groan
+      // Layer 1: Multiple low voices "boooo"
+      for(let v=0;v<10;v++){
+        const buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=buf.getChannelData(0);
+        const baseF=100+Math.random()*120,phase=Math.random()*Math.PI*2;
+        for(let i=0;i<d.length;i++){
+          const t=i/ac.sampleRate;
+          // "ooo" vowel formant
+          d[i]=Math.sin(t*(baseF+Math.sin(t*2+phase)*15))*0.12;
+          d[i]+=Math.sin(t*(baseF*2+Math.sin(t*3+phase)*20))*0.06;
+          d[i]+=Math.sin(t*(baseF*3))*0.03;
+          d[i]+=(Math.random()*2-1)*0.04; // breathiness
+        }
+        const src=ac.createBufferSource();src.buffer=buf;
+        const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=250+Math.random()*200;bp.Q.value=1+Math.random();
+        const env=ac.createGain();
+        const vStart=Math.random()*0.15;
+        env.gain.setValueAtTime(0,now);
+        env.gain.linearRampToValueAtTime(0.1,now+0.2+vStart);
+        env.gain.setValueAtTime(0.1,now+dur*0.65);
+        env.gain.linearRampToValueAtTime(0,now+dur);
+        src.connect(bp);bp.connect(env);env.connect(master);
+        src.start(now+vStart);src.stop(now+dur);
       }
+      // Layer 2: Low rumble
+      const rumBuf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),rd=rumBuf.getChannelData(0);
+      for(let i=0;i<rd.length;i++){const t=i/ac.sampleRate;rd[i]=(Math.random()*2-1)*0.2+Math.sin(t*80)*0.1}
+      const rumSrc=ac.createBufferSource();rumSrc.buffer=rumBuf;
+      const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=300;
+      const rumEnv=ac.createGain();
+      rumEnv.gain.setValueAtTime(0,now);rumEnv.gain.linearRampToValueAtTime(0.08,now+0.3);
+      rumEnv.gain.setValueAtTime(0.08,now+dur*0.6);rumEnv.gain.linearRampToValueAtTime(0,now+dur);
+      rumSrc.connect(lp);lp.connect(rumEnv);rumEnv.connect(master);
+      rumSrc.start(now);rumSrc.stop(now+dur);
     }
-    const src=ac.createBufferSource();src.buffer=buf;
-    const gain=ac.createGain();gain.gain.value=0.4;
-    const filt=ac.createBiquadFilter();filt.type=cheer?'bandpass':'lowpass';filt.frequency.value=cheer?2000:600;filt.Q.value=0.5;
-    src.connect(filt);filt.connect(gain);gain.connect(ac.destination);
-    src.start();src.onended=()=>ac.close();
+    setTimeout(()=>ac.close(),(dur+0.5)*1000);
   }catch(e){console.log('Audio not available')}
 }
 
