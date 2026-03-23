@@ -1157,9 +1157,9 @@ function loadSimulation(){
 
 // ============ SYNC DISPLAY ============
 function updateSyncDisplay(ts){
-  const fmt=ts?new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'Awaiting first sync';
-  const hdr=document.getElementById('lastSyncHeader');if(hdr)hdr.textContent=ts?'Synced: '+fmt:fmt;
-  const adm=document.getElementById('adminLastSync');if(adm)adm.textContent=ts?'Last sync: '+fmt:fmt;
+  const fmt=ts?new Date(ts).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' ET':'Awaiting first sync';
+  const hdr=document.getElementById('lastSyncHeader');if(hdr)hdr.textContent=ts?'HubSpot Last Synced: '+fmt:fmt;
+  const adm=document.getElementById('adminLastSync');if(adm)adm.textContent=ts?'HubSpot Last Synced: '+fmt:fmt;
 }
 function refreshFromHS(){
   const btn=document.getElementById('refreshBtn');
