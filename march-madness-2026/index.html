@@ -1020,24 +1020,69 @@ let rulesPlaying=false,rulesTimer=null,rulesKeepAlive=null,rulesQueue=[];
 // Three-announcer broadcast script: Nantz (smooth anchor), Harlan (electric energy), Eagle (witty color)
 // Voice configs: {text, rate, pitch} — different for each announcer
 const BROADCAST=[
-  // NANTZ - smooth, measured open
-  {who:'nantz',text:"Hello everyone, and welcome. to the 2026, Annual, PlanHub, March Madness contest. I'm Jim Nantz alongside my partners Kevin Harlan and Ian Eagle. And folks, we have got ourselves a tournament.",rate:0.92,pitch:0.9},
-  // HARLAN - electric energy
-  {who:'harlan',text:"Oh Jim, this is going to be INCREDIBLE! 8 teams! Bracket style! Head to head combat, just like the N C double A tournament! Quarterfinals start March 23rd, Semifinals the 26th, and the Championship round, March 30th and 31st!",rate:1.12,pitch:1.15},
-  // EAGLE - witty setup
-  {who:'eagle',text:"And Kevin, the scoring system, is beautiful in its simplicity. A Es, you need 100 calls in a day for 2 points. Every closed won sale gets you 3 more. S D Rs, your threshold is 150 calls for 2 points, and every warm transfer, that's 2 points each.",rate:1.05,pitch:1.05},
-  // HARLAN - escalating
-  {who:'harlan',text:"But Ian don't forget the S D R closer bonus! An S D R driven closed won sale? That's FIVE points! FIVE! That is a DAGGER from downtown!",rate:1.15,pitch:1.2},
-  // NANTZ - the free throw
-  {who:'nantz',text:"And then, there's the free throw. Close a deal as an A E, or earn a warm transfer as an S D R, and you step, to the charity stripe. Make the shot, and you earn bonus points for yourself, and your team.",rate:0.9,pitch:0.88},
-  // EAGLE - prizes
-  {who:'eagle',text:"Now here's what everyone's playing for. $500 for the Bracket Champion. Another $500 for the team with the most total points. That's a thousand dollars in team prizes alone.",rate:1.0,pitch:1.0},
-  // HARLAN - individual prizes
-  {who:'harlan',text:"And for the individual stars! $100 for the A E M V P! $100 for the S D R M V P! And $100, for the Free Throw Crown! That's the player who DOMINATES at the line!",rate:1.1,pitch:1.18},
-  // NANTZ - classic close
-  {who:'nantz',text:"Over $1,300 in prizes. 29 players. 8 teams. One champion. Ladies and gentlemen. The 2026, PlanHub, March Madness, tournament, starts, now.",rate:0.85,pitch:0.85},
-  // HARLAN - sendoff
-  {who:'harlan',text:"LET THE MADNESS BEGIN! BUCKLE UP PEOPLE!",rate:1.2,pitch:1.25}
+  // NANTZ - warm, velvety open. Slow build. The "Hello friends" energy. Deep, almost whispering reverence.
+  {who:'nantz',text:"Hello friends.",rate:0.78,pitch:0.75},
+  {who:'nantz',text:"Welcome... to the 2026... Annual... PlanHub... March Madness... contest.",rate:0.72,pitch:0.78},
+  {who:'nantz',text:"I'm Jim Nantz. Alongside my partners, Kevin Harlan, and Ian Eagle.",rate:0.82,pitch:0.8},
+  {who:'nantz',text:"And folks?",rate:0.75,pitch:0.82},
+  {who:'nantz',text:"We have got ourselves... a tournament.",rate:0.7,pitch:0.85},
+
+  // HARLAN - EXPLOSION of energy. Staccato bursts. Volume cranked. The "CAN YOU BELIEVE THIS" guy.
+  {who:'harlan',text:"OH! Jim!",rate:1.25,pitch:1.3},
+  {who:'harlan',text:"This is going to be... IN-CREDIBLE!",rate:1.05,pitch:1.25},
+  {who:'harlan',text:"EIGHT teams!",rate:1.3,pitch:1.35},
+  {who:'harlan',text:"Bracket style!",rate:1.2,pitch:1.3},
+  {who:'harlan',text:"Head! To head! COMBAT!",rate:1.15,pitch:1.4},
+  {who:'harlan',text:"Just like the N C double A tournament!",rate:1.1,pitch:1.2},
+  {who:'harlan',text:"Quarterfinals, March 23rd. Semifinals, the 26th. And the Championship round? March 30th and 31st!",rate:1.08,pitch:1.15},
+
+  // EAGLE - smooth, knowing, the cool teacher explaining. Conversational with a wink.
+  {who:'eagle',text:"And Kevin.",rate:0.95,pitch:1.0},
+  {who:'eagle',text:"The scoring system here... is beautiful, in its simplicity.",rate:0.88,pitch:0.95},
+  {who:'eagle',text:"A Es. Hit 100 calls in a day? That's 2 points.",rate:0.95,pitch:1.0},
+  {who:'eagle',text:"Every closed won sale? 3 more points.",rate:0.92,pitch:1.05},
+  {who:'eagle',text:"S D Rs. Your threshold? 150 calls. That gets you 2 points.",rate:0.98,pitch:0.98},
+  {who:'eagle',text:"And every warm transfer... that's 2 points... each.",rate:0.85,pitch:1.02},
+
+  // HARLAN - cuts in, can't contain himself
+  {who:'harlan',text:"But WAIT! Ian!",rate:1.3,pitch:1.35},
+  {who:'harlan',text:"Don't forget the S D R closer bonus!",rate:1.15,pitch:1.25},
+  {who:'harlan',text:"An S D R driven... closed won sale?",rate:0.95,pitch:1.2},
+  {who:'harlan',text:"That's FIVE points! FIVE!",rate:1.25,pitch:1.4},
+  {who:'harlan',text:"That is a DAGGER! From DOWNTOWN!",rate:1.2,pitch:1.45},
+
+  // NANTZ - brings it back down, reverent. The Augusta treatment.
+  {who:'nantz',text:"And then.",rate:0.7,pitch:0.75},
+  {who:'nantz',text:"There's... the free throw.",rate:0.68,pitch:0.8},
+  {who:'nantz',text:"Close a deal as an A E. Or earn a warm transfer as an S D R.",rate:0.82,pitch:0.82},
+  {who:'nantz',text:"And you step... to the charity stripe.",rate:0.72,pitch:0.78},
+  {who:'nantz',text:"Make the shot? And you earn bonus points. For yourself. And for your team.",rate:0.78,pitch:0.85},
+
+  // EAGLE - leans in, money talk
+  {who:'eagle',text:"Now. Here's what everyone's playing for.",rate:0.9,pitch:0.95},
+  {who:'eagle',text:"$500. For the Bracket Champion.",rate:0.85,pitch:1.0},
+  {who:'eagle',text:"Another $500, for the team with the most total points.",rate:0.92,pitch:1.02},
+  {who:'eagle',text:"That's a thousand dollars. In team prizes alone.",rate:0.82,pitch:1.05},
+
+  // HARLAN - individual prizes, building to crescendo
+  {who:'harlan',text:"And for the individual STARS!",rate:1.15,pitch:1.3},
+  {who:'harlan',text:"$100 for the A E... M V P!",rate:1.05,pitch:1.25},
+  {who:'harlan',text:"$100 for the S D R... M V P!",rate:1.08,pitch:1.3},
+  {who:'harlan',text:"And $100... for the FREE! THROW! CROWN!",rate:1.1,pitch:1.4},
+  {who:'harlan',text:"That's the player who DOMINATES... at the line!",rate:1.05,pitch:1.35},
+
+  // NANTZ - the legendary close. Whisper to proclamation.
+  {who:'nantz',text:"Over $1,300 in prizes.",rate:0.72,pitch:0.75},
+  {who:'nantz',text:"29 players.",rate:0.7,pitch:0.78},
+  {who:'nantz',text:"8 teams.",rate:0.68,pitch:0.8},
+  {who:'nantz',text:"One... champion.",rate:0.62,pitch:0.82},
+  {who:'nantz',text:"Ladies and gentlemen.",rate:0.75,pitch:0.78},
+  {who:'nantz',text:"The 2026 PlanHub March Madness tournament...",rate:0.7,pitch:0.8},
+  {who:'nantz',text:"starts now.",rate:0.65,pitch:0.88},
+
+  // HARLAN - ERUPTION
+  {who:'harlan',text:"LET! THE MADNESS! BEGIN!",rate:1.15,pitch:1.45},
+  {who:'harlan',text:"BUCKLE! UP! PEOPLE!",rate:1.2,pitch:1.5}
 ];
 
 function getVoiceForAnnouncer(who){
@@ -1076,13 +1121,19 @@ function playRulesAudio(){
   speakNext();
 }
 
+let lastSpeaker='';
 function speakNext(){
   if(!rulesPlaying||!rulesQueue.length){stopRulesAudio();return}
   const seg=rulesQueue.shift();
+  const nextWho=rulesQueue.length?rulesQueue[0].who:null;
+  // Dramatic pauses: longer between announcer switches, shorter within same speaker
+  const switchingVoice=seg.who!==lastSpeaker;
+  const pause=switchingVoice?600:120;
+  lastSpeaker=seg.who;
   const u=new SpeechSynthesisUtterance(seg.text);
   u.rate=seg.rate;u.pitch=seg.pitch;u.volume=1;
   const v=getVoiceForAnnouncer(seg.who);if(v)u.voice=v;
-  u.onend=()=>{if(rulesPlaying)setTimeout(speakNext,300)};
+  u.onend=()=>{if(rulesPlaying)setTimeout(speakNext,nextWho&&nextWho!==seg.who?600:pause)};
   u.onerror=()=>{if(rulesPlaying)setTimeout(speakNext,100)};
   window.speechSynthesis.speak(u);
 }
