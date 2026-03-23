@@ -852,8 +852,41 @@ function shootBall(){
   ab();
 }
 
+// Audio: crowd cheering / booing using Web Audio API (no external files)
+function playCrowdSound(cheer){
+  try{
+    const ac=new(window.AudioContext||window.webkitAudioContext)(),dur=cheer?1.8:1.2,sr=ac.sampleRate;
+    const buf=ac.createBuffer(1,sr*dur,sr),d=buf.getChannelData(0);
+    if(cheer){
+      // Cheering: filtered noise with rising pitch bursts
+      for(let i=0;i<d.length;i++){
+        const t=i/sr,env=Math.min(t*8,1)*Math.max(0,1-t/dur);
+        d[i]=(Math.random()*2-1)*0.3*env;
+        // Add tonal "woo" overtones
+        d[i]+=Math.sin(t*800*(1+t*0.5))*0.12*env;
+        d[i]+=Math.sin(t*1200*(1+t*0.3))*0.08*env;
+        d[i]+=Math.sin(t*400+Math.sin(t*6)*100)*0.1*env;
+      }
+    }else{
+      // Booing: low rumble with descending tone
+      for(let i=0;i<d.length;i++){
+        const t=i/sr,env=Math.min(t*6,1)*Math.max(0,1-t/dur);
+        d[i]=(Math.random()*2-1)*0.25*env;
+        d[i]+=Math.sin(t*180*(1-t*0.3))*0.2*env;
+        d[i]+=Math.sin(t*120*(1-t*0.2))*0.15*env;
+      }
+    }
+    const src=ac.createBufferSource();src.buffer=buf;
+    const gain=ac.createGain();gain.gain.value=0.4;
+    const filt=ac.createBiquadFilter();filt.type=cheer?'bandpass':'lowpass';filt.frequency.value=cheer?2000:600;filt.Q.value=0.5;
+    src.connect(filt);filt.connect(gain);gain.connect(ac.destination);
+    src.start();src.onended=()=>ac.close();
+  }catch(e){console.log('Audio not available')}
+}
+
 function finishShot(made){
   ftS='done';drawCourt(); // redraw with reactions
+  playCrowdSound(made);
   const player=document.getElementById('ftSel').value,r=document.getElementById('ftRes');
   const pts=made?ftMult():0;
   if(made){r.className='ft-res made';r.textContent=`SWISH! +${pts} Point${pts>1?'s':''}!`}
