@@ -881,77 +881,51 @@ function renderFTLog(){const log=D.freeThrowLog.slice(-20).reverse(),el=document
 function renderNews(){const el=document.getElementById('newsFeed');
   if(!D.newsFeed.length){el.innerHTML='<p style="color:var(--gr)">No updates yet.</p>';return}
   el.innerHTML=D.newsFeed.slice(0,50).map(n=>`<div class="news-item ${n.type||''}"><div class="news-time">${new Date(n.timestamp).toLocaleString()}</div>
-    <div class="news-title">${esc(n.title)}</div>${n.body?`<div class="news-body">${esc(n.body)}</div>`:''}</div>`).join('')}
+    <div class="news-title">${esc(n.title)}</div>${n.body?`<div class="news-body">${esc(n.body).replace(/\n/g,'<br>')}</div>`:''}</div>`).join('')}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
 // ============ AUTO-NEWS GENERATOR ============
+// Only posts when something NEW crosses a threshold (dedup via autoId)
 function generateAutoNews(){
   if(!D.dailyScores||!Object.keys(D.dailyScores).length)return;
   const ad=allDates().filter(d=>D.dailyScores[d]),cr=D.settings.currentRound;
   const existing=new Set((D.newsFeed||[]).map(n=>n.autoId).filter(Boolean));
   const posts=[];
-  function add(autoId,type,title,body){if(!existing.has(autoId))posts.push({id:Date.now()+Math.random(),autoId,type,title,body,timestamp:new Date().toISOString()})}
+  let changed=false;
+  function add(autoId,type,title,body){if(!existing.has(autoId)){posts.push({id:Date.now()+Math.random(),autoId,type,title,body,timestamp:new Date().toISOString()});changed=true}}
 
-  // 1. Close matchups (within 5 points)
   const rd=cr===1?D.bracket.round1:cr===2?D.bracket.round2:D.bracket.round3;
   const dates=rDates(cr);
+
+  // Close matchups (within 5 points) — use score snapshot so it doesn't re-fire at same score
   rd.forEach(m=>{
     if(!m.t1||!m.t2||m.w)return;
     const t1=T(m.t1),t2=T(m.t2),s1=tScore(m.t1,dates),s2=tScore(m.t2,dates);
     const diff=Math.abs(s1-s2);
     if(diff<=5&&(s1+s2)>0){
-      const leader=s1>=s2?t1:t2,trailer=s1>=s2?t2:t1;
-      add('close-'+m.mid+'-'+cr,'alert',
+      const leader=s1>=s2?t1:t2,trailer=s1>=s2?t2:t1,ls=Math.max(s1,s2);
+      add('close-'+m.mid+'-'+ls,'alert',
         diff===0?`Dead heat! ${t1.name} and ${t2.name} are tied at ${s1}!`
-        :`Nail-biter! ${leader.name} leads ${trailer.name} by just ${diff} point${diff>1?'s':''}!`,
+        :`Nail-biter! ${leader.name} leads ${trailer.name} by just ${diff} pt${diff>1?'s':''}!`,
         `${m.mid} is going down to the wire. Every point counts!`);
     }
   });
 
-  // 2. Individual hot streaks (player scoring 15+ in a single day)
+  // Individual hot streaks (15+ in a single day)
   ad.forEach(d=>{
     const ds=D.dailyScores[d];if(!ds)return;
     Object.entries(ds).forEach(([name,_])=>{
       const pts=pDay(name,d);
       if(pts.total>=15){
         const tm=pTeam(name);
-        add('hot-'+name+'-'+d,'highlight',
-          `${name} is on fire!`,
-          `${pts.total} points on ${new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} for ${tm?tm.name:'their team'}! (${pts.closePts>0?pts.closePts+' sale pts, ':''}${pts.callPts>0?pts.callPts+' call pts, ':''}${pts.transPts>0?pts.transPts+' transfer pts, ':''}${pts.ftPts>0?pts.ftPts+' FT pts':''})`
-            .replace(/, \)/,')').replace(/, $/,''));
+        const parts=[pts.closePts>0?pts.closePts+' sale':'',pts.callPts>0?pts.callPts+' call':'',pts.transPts>0?pts.transPts+' transfer':'',pts.ftPts>0?pts.ftPts+' FT':''].filter(Boolean).join(', ');
+        add('hot-'+name+'-'+d,'highlight',`${name} is on fire!`,
+          `${pts.total} pts on ${new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} for ${tm?tm.name:'their team'}! (${parts})`);
       }
     });
   });
 
-  // 3. Top scorer callout
-  const players=allP();
-  if(players.length){
-    const sorted=players.map(p=>({...p,pts:pTotal(p.name,ad)})).filter(p=>p.pts>0).sort((a,b)=>b.pts-a.pts);
-    if(sorted.length>=2){
-      const top=sorted[0],second=sorted[1];
-      const gap=top.pts-second.pts;
-      if(gap<=3&&top.pts>10){
-        add('mvp-race-'+cr,'preview',
-          `MVP race is heating up!`,
-          `${top.name} (${top.pts} pts) leads ${second.name} (${second.pts} pts) by just ${gap} point${gap!==1?'s':''}!`);
-      }
-      if(top.pts>=20){
-        add('top-scorer-'+top.name+'-'+cr,'highlight',
-          `${top.name} leads all scorers with ${top.pts} points!`,
-          `Representing ${top.tn} — can anyone catch them?`);
-      }
-    }
-  }
-
-  // 4. Team dominance (team leading by 20+)
-  const teams=[...D.teams].map(t=>({...t,pts:tScore(t.id,ad)})).sort((a,b)=>b.pts-a.pts);
-  if(teams.length>=2&&teams[0].pts-teams[1].pts>=20&&teams[0].pts>0){
-    add('dominance-'+teams[0].id+'-'+cr,'update',
-      `${teams[0].name} is dominating!`,
-      `Leading the contest with ${teams[0].pts} points — ${teams[0].pts-teams[1].pts} points ahead of ${teams[1].name}!`);
-  }
-
-  // 5. Upset alert (lower seed leading higher seed)
+  // Upset alert (lower seed leading by 5+)
   rd.forEach(m=>{
     if(!m.t1||!m.t2||m.w)return;
     const t1=T(m.t1),t2=T(m.t2),s1=tScore(m.t1,dates),s2=tScore(m.t2,dates);
@@ -959,25 +933,17 @@ function generateAutoNews(){
     const hiSeed=t1.seed<t2.seed?t1:t2,loSeed=t1.seed<t2.seed?t2:t1;
     const hiScore=t1.seed<t2.seed?s1:s2,loScore=t1.seed<t2.seed?s2:s1;
     if(loScore>hiScore&&loScore-hiScore>=5){
-      add('upset-'+m.mid+'-'+cr,'alert',
+      add('upset-'+m.mid+'-'+loScore,'alert',
         `Upset brewing! #${loSeed.seed} ${loSeed.name} leads #${hiSeed.seed} ${hiSeed.name}!`,
-        `The underdogs are up by ${loScore-hiScore} points in ${m.mid}!`);
+        `The underdogs are up by ${loScore-hiScore} pts in ${m.mid}!`);
     }
   });
 
-  // 6. Free throw leader
-  if(players.length){
-    const ftSorted=players.map(p=>{let ft=0;ad.forEach(d=>{ft+=pDay(p.name,d).ftPts});return{...p,ftPts:ft}}).filter(p=>p.ftPts>0).sort((a,b)=>b.ftPts-a.ftPts);
-    if(ftSorted.length&&ftSorted[0].ftPts>=3){
-      add('ft-leader-'+cr,'update',
-        `${ftSorted[0].name} leads the Free Throw Crown race!`,
-        `${ftSorted[0].ftPts} FT points so far${ftSorted.length>1?' — '+ftSorted[1].name+' has '+ftSorted[1].ftPts:''}`);
-    }
-  }
-
-  if(posts.length){
+  if(changed){
     D.newsFeed=posts.concat(D.newsFeed||[]);
     save();
+    const at=document.querySelector('.nav-tab.active');
+    if(at&&at.dataset.tab==='news')renderNews();
   }
 }
 
