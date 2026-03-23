@@ -233,6 +233,21 @@ button{cursor:pointer;font-family:var(--f)}input,select,textarea{font-family:var
     <div class="card" style="margin-bottom:16px">
       <div class="card-title" style="font-size:1.2rem">&#x1F3C0; Contest Description</div>
       <p style="font-size:.95rem;color:var(--gl);line-height:1.6;margin-top:12px">The 2026 Annual PlanHub March Madness contest will run from Monday March 23rd to Tuesday March 31st. This year there will be PLENTY of Madness. Players compete both individually and as a team to compete for prizes.</p>
+      <!-- Audio Rules Explainer -->
+      <div id="rulesAudioPlayer" style="margin-top:16px;background:linear-gradient(135deg,var(--bg3),#2a3f55);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;border:1px solid var(--teal);transition:all .2s" onclick="playRulesAudio()" onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--teal)'">
+        <div id="rulesPlayBtn" style="width:48px;height:48px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .2s">
+          <svg id="rulesPlayIcon" width="20" height="20" viewBox="0 0 20 20" fill="white"><polygon points="6,3 17,10 6,17"/></svg>
+          <svg id="rulesStopIcon" width="20" height="20" viewBox="0 0 20 20" fill="white" style="display:none"><rect x="4" y="4" width="12" height="12" rx="2"/></svg>
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:800;color:var(--wh);font-size:.95rem">Listen to the Rules</div>
+          <div style="font-size:.75rem;color:var(--gl);margin-top:2px">Hear a quick rundown of the contest format, scoring, and prizes</div>
+          <div id="rulesAudioProgress" style="margin-top:8px;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden">
+            <div id="rulesAudioBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:2px;transition:width .5s linear"></div>
+          </div>
+        </div>
+        <div style="font-size:.7rem;color:var(--gr)" id="rulesAudioTime">~40 sec</div>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:16px">
         <div style="background:var(--bg3);border-radius:8px;padding:16px;border-left:4px solid var(--teal)">
           <div style="font-size:.75rem;color:var(--teal);font-weight:700;text-transform:uppercase;letter-spacing:1px">Round 1 — Quarterfinals</div>
@@ -998,6 +1013,63 @@ function renderNews(){const el=document.getElementById('newsFeed');
   el.innerHTML=D.newsFeed.slice(0,50).map(n=>`<div class="news-item ${n.type||''}"><div class="news-time">${new Date(n.timestamp).toLocaleString()}</div>
     <div class="news-title">${esc(n.title)}</div>${n.body?`<div class="news-body">${esc(n.body).replace(/\n/g,'<br>')}</div>`:''}</div>`).join('')}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+// ============ RULES AUDIO PLAYER ============
+let rulesPlaying=false,rulesUtter=null,rulesTimer=null;
+const RULES_SCRIPT=`Welcome to PlanHub March Madness 2026! It's time to bring the heat!
+
+Here's how it works. 8 teams go head to head in a bracket-style tournament, just like the N C double A. Quarterfinals run March 23rd through 25th. Semifinals, March 26th and 27th. And the Championship round, March 30th and 31st.
+
+Now let's talk scoring. A Es, hit 100 calls in a day? That's 2 points. Every closed won sale? 3 more points. S D Rs, you need 150 calls for your 2 daily points. Every warm transfer earns you 2 points. And every S D R driven closed won sale? That's a big 5 points.
+
+But here's where it gets fun. Earn a warm transfer or close a deal, and you step to the free throw line! Make the shot, and you score bonus points for you AND your team.
+
+There's over $1,300 in prizes up for grabs! $500 for the Bracket Champion. $500 for the Top Team. $100 each for the A E M V P, S D R M V P, and the Free Throw Crown.
+
+So make those calls, close those deals, and drain those free throws. Let the Madness begin!`;
+
+function playRulesAudio(){
+  if(rulesPlaying){stopRulesAudio();return}
+  if(!('speechSynthesis' in window)){alert('Speech not supported in this browser');return}
+  window.speechSynthesis.cancel();
+  rulesUtter=new SpeechSynthesisUtterance(RULES_SCRIPT);
+  rulesUtter.rate=1.05;rulesUtter.pitch=1.1;rulesUtter.volume=1;
+  // Try to pick a good voice
+  const voices=window.speechSynthesis.getVoices();
+  const pref=voices.find(v=>v.name.includes('Google US English'))||voices.find(v=>v.name.includes('Microsoft Mark'))||voices.find(v=>v.lang.startsWith('en')&&v.localService);
+  if(pref)rulesUtter.voice=pref;
+  rulesPlaying=true;
+  document.getElementById('rulesPlayIcon').style.display='none';
+  document.getElementById('rulesStopIcon').style.display='block';
+  document.getElementById('rulesPlayBtn').style.background='var(--coral)';
+  document.getElementById('rulesAudioTime').textContent='Playing...';
+  // Animate progress bar (~40 seconds)
+  const dur=40000;let start=Date.now();
+  rulesTimer=setInterval(()=>{
+    const pct=Math.min(100,((Date.now()-start)/dur)*100);
+    document.getElementById('rulesAudioBar').style.width=pct+'%';
+    if(pct>=100)clearInterval(rulesTimer);
+  },500);
+  rulesUtter.onend=()=>stopRulesAudio();
+  rulesUtter.onerror=()=>stopRulesAudio();
+  window.speechSynthesis.speak(rulesUtter);
+  // Chrome bug: speech stops after 15s, need to resume
+  rulesKeepAlive=setInterval(()=>{if(window.speechSynthesis.speaking){window.speechSynthesis.pause();window.speechSynthesis.resume()}},10000);
+}
+function stopRulesAudio(){
+  window.speechSynthesis.cancel();
+  rulesPlaying=false;
+  if(rulesTimer)clearInterval(rulesTimer);
+  if(rulesKeepAlive)clearInterval(rulesKeepAlive);
+  document.getElementById('rulesPlayIcon').style.display='block';
+  document.getElementById('rulesStopIcon').style.display='none';
+  document.getElementById('rulesPlayBtn').style.background='var(--teal)';
+  document.getElementById('rulesAudioBar').style.width='0%';
+  document.getElementById('rulesAudioTime').textContent='~40 sec';
+}
+let rulesKeepAlive=null;
+// Preload voices
+if('speechSynthesis' in window)window.speechSynthesis.getVoices();
 
 // ============ AUTO-NEWS GENERATOR ============
 // Only posts when something NEW crosses a threshold (dedup via autoId)
