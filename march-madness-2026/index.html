@@ -240,13 +240,13 @@ button{cursor:pointer;font-family:var(--f)}input,select,textarea{font-family:var
           <svg id="rulesStopIcon" width="20" height="20" viewBox="0 0 20 20" fill="white" style="display:none"><rect x="4" y="4" width="12" height="12" rx="2"/></svg>
         </div>
         <div style="flex:1">
-          <div style="font-weight:800;color:var(--wh);font-size:.95rem">Listen to the Rules</div>
-          <div style="font-size:.75rem;color:var(--gl);margin-top:2px">Hear a quick rundown of the contest format, scoring, and prizes</div>
+          <div style="font-weight:800;color:var(--wh);font-size:.95rem">The Opening Broadcast</div>
+          <div style="font-size:.75rem;color:var(--gl);margin-top:2px">Jim Nantz, Kevin Harlan, and Ian Eagle break down the 2026 PlanHub March Madness tournament</div>
           <div id="rulesAudioProgress" style="margin-top:8px;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden">
             <div id="rulesAudioBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:2px;transition:width .5s linear"></div>
           </div>
         </div>
-        <div style="font-size:.7rem;color:var(--gr)" id="rulesAudioTime">~40 sec</div>
+        <div style="font-size:.7rem;color:var(--gr)" id="rulesAudioTime">~45 sec</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:16px">
         <div style="background:var(--bg3);border-radius:8px;padding:16px;border-left:4px solid var(--teal)">
@@ -1015,61 +1015,91 @@ function renderNews(){const el=document.getElementById('newsFeed');
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
 // ============ RULES AUDIO PLAYER ============
-let rulesPlaying=false,rulesUtter=null,rulesTimer=null;
-const RULES_SCRIPT=`Welcome to PlanHub March Madness 2026! It's time to bring the heat!
+let rulesPlaying=false,rulesTimer=null,rulesKeepAlive=null,rulesQueue=[];
 
-Here's how it works. 8 teams go head to head in a bracket-style tournament, just like the N C double A. Quarterfinals run March 23rd through 25th. Semifinals, March 26th and 27th. And the Championship round, March 30th and 31st.
+// Three-announcer broadcast script: Nantz (smooth anchor), Harlan (electric energy), Eagle (witty color)
+// Voice configs: {text, rate, pitch} — different for each announcer
+const BROADCAST=[
+  // NANTZ - smooth, measured open
+  {who:'nantz',text:"Hello everyone, and welcome. to the 2026, Annual, PlanHub, March Madness contest. I'm Jim Nantz alongside my partners Kevin Harlan and Ian Eagle. And folks, we have got ourselves a tournament.",rate:0.92,pitch:0.9},
+  // HARLAN - electric energy
+  {who:'harlan',text:"Oh Jim, this is going to be INCREDIBLE! 8 teams! Bracket style! Head to head combat, just like the N C double A tournament! Quarterfinals start March 23rd, Semifinals the 26th, and the Championship round, March 30th and 31st!",rate:1.12,pitch:1.15},
+  // EAGLE - witty setup
+  {who:'eagle',text:"And Kevin, the scoring system, is beautiful in its simplicity. A Es, you need 100 calls in a day for 2 points. Every closed won sale gets you 3 more. S D Rs, your threshold is 150 calls for 2 points, and every warm transfer, that's 2 points each.",rate:1.05,pitch:1.05},
+  // HARLAN - escalating
+  {who:'harlan',text:"But Ian don't forget the S D R closer bonus! An S D R driven closed won sale? That's FIVE points! FIVE! That is a DAGGER from downtown!",rate:1.15,pitch:1.2},
+  // NANTZ - the free throw
+  {who:'nantz',text:"And then, there's the free throw. Close a deal as an A E, or earn a warm transfer as an S D R, and you step, to the charity stripe. Make the shot, and you earn bonus points for yourself, and your team.",rate:0.9,pitch:0.88},
+  // EAGLE - prizes
+  {who:'eagle',text:"Now here's what everyone's playing for. $500 for the Bracket Champion. Another $500 for the team with the most total points. That's a thousand dollars in team prizes alone.",rate:1.0,pitch:1.0},
+  // HARLAN - individual prizes
+  {who:'harlan',text:"And for the individual stars! $100 for the A E M V P! $100 for the S D R M V P! And $100, for the Free Throw Crown! That's the player who DOMINATES at the line!",rate:1.1,pitch:1.18},
+  // NANTZ - classic close
+  {who:'nantz',text:"Over $1,300 in prizes. 29 players. 8 teams. One champion. Ladies and gentlemen. The 2026, PlanHub, March Madness, tournament, starts, now.",rate:0.85,pitch:0.85},
+  // HARLAN - sendoff
+  {who:'harlan',text:"LET THE MADNESS BEGIN! BUCKLE UP PEOPLE!",rate:1.2,pitch:1.25}
+];
 
-Now let's talk scoring. A Es, hit 100 calls in a day? That's 2 points. Every closed won sale? 3 more points. S D Rs, you need 150 calls for your 2 daily points. Every warm transfer earns you 2 points. And every S D R driven closed won sale? That's a big 5 points.
-
-But here's where it gets fun. Earn a warm transfer or close a deal, and you step to the free throw line! Make the shot, and you score bonus points for you AND your team.
-
-There's over $1,300 in prizes up for grabs! $500 for the Bracket Champion. $500 for the Top Team. $100 each for the A E M V P, S D R M V P, and the Free Throw Crown.
-
-So make those calls, close those deals, and drain those free throws. Let the Madness begin!`;
+function getVoiceForAnnouncer(who){
+  const voices=window.speechSynthesis.getVoices();
+  // Try to get 3 distinct voices
+  const enVoices=voices.filter(v=>v.lang.startsWith('en'));
+  const google=enVoices.filter(v=>v.name.includes('Google'));
+  const ms=enVoices.filter(v=>v.name.includes('Microsoft'));
+  const pool=google.length>=3?google:ms.length>=3?ms:enVoices;
+  if(who==='nantz')return pool[0]||null; // deepest/smoothest
+  if(who==='harlan')return pool[Math.min(2,pool.length-1)]||null; // most energetic
+  if(who==='eagle')return pool[Math.min(1,pool.length-1)]||null; // middle
+  return null;
+}
 
 function playRulesAudio(){
   if(rulesPlaying){stopRulesAudio();return}
   if(!('speechSynthesis' in window)){alert('Speech not supported in this browser');return}
   window.speechSynthesis.cancel();
-  rulesUtter=new SpeechSynthesisUtterance(RULES_SCRIPT);
-  rulesUtter.rate=1.05;rulesUtter.pitch=1.1;rulesUtter.volume=1;
-  // Try to pick a good voice
-  const voices=window.speechSynthesis.getVoices();
-  const pref=voices.find(v=>v.name.includes('Google US English'))||voices.find(v=>v.name.includes('Microsoft Mark'))||voices.find(v=>v.lang.startsWith('en')&&v.localService);
-  if(pref)rulesUtter.voice=pref;
   rulesPlaying=true;
   document.getElementById('rulesPlayIcon').style.display='none';
   document.getElementById('rulesStopIcon').style.display='block';
   document.getElementById('rulesPlayBtn').style.background='var(--coral)';
   document.getElementById('rulesAudioTime').textContent='Playing...';
-  // Animate progress bar (~40 seconds)
-  const dur=40000;let start=Date.now();
+  // Progress bar (~45 seconds total)
+  const dur=50000;let start=Date.now();
   rulesTimer=setInterval(()=>{
     const pct=Math.min(100,((Date.now()-start)/dur)*100);
     document.getElementById('rulesAudioBar').style.width=pct+'%';
     if(pct>=100)clearInterval(rulesTimer);
   },500);
-  rulesUtter.onend=()=>stopRulesAudio();
-  rulesUtter.onerror=()=>stopRulesAudio();
-  window.speechSynthesis.speak(rulesUtter);
-  // Chrome bug: speech stops after 15s, need to resume
+  // Chrome bug workaround
   rulesKeepAlive=setInterval(()=>{if(window.speechSynthesis.speaking){window.speechSynthesis.pause();window.speechSynthesis.resume()}},10000);
+  // Queue all segments
+  rulesQueue=[...BROADCAST];
+  speakNext();
 }
+
+function speakNext(){
+  if(!rulesPlaying||!rulesQueue.length){stopRulesAudio();return}
+  const seg=rulesQueue.shift();
+  const u=new SpeechSynthesisUtterance(seg.text);
+  u.rate=seg.rate;u.pitch=seg.pitch;u.volume=1;
+  const v=getVoiceForAnnouncer(seg.who);if(v)u.voice=v;
+  u.onend=()=>{if(rulesPlaying)setTimeout(speakNext,300)};
+  u.onerror=()=>{if(rulesPlaying)setTimeout(speakNext,100)};
+  window.speechSynthesis.speak(u);
+}
+
 function stopRulesAudio(){
   window.speechSynthesis.cancel();
-  rulesPlaying=false;
+  rulesPlaying=false;rulesQueue=[];
   if(rulesTimer)clearInterval(rulesTimer);
   if(rulesKeepAlive)clearInterval(rulesKeepAlive);
   document.getElementById('rulesPlayIcon').style.display='block';
   document.getElementById('rulesStopIcon').style.display='none';
   document.getElementById('rulesPlayBtn').style.background='var(--teal)';
   document.getElementById('rulesAudioBar').style.width='0%';
-  document.getElementById('rulesAudioTime').textContent='~40 sec';
+  document.getElementById('rulesAudioTime').textContent='~45 sec';
 }
-let rulesKeepAlive=null;
 // Preload voices
-if('speechSynthesis' in window)window.speechSynthesis.getVoices();
+if('speechSynthesis' in window){window.speechSynthesis.getVoices();window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices()}
 
 // ============ AUTO-NEWS GENERATOR ============
 // Only posts when something NEW crosses a threshold (dedup via autoId)
