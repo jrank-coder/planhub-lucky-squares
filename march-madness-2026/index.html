@@ -732,17 +732,24 @@ const HOOP_X=350,HOOP_Y=100,HOOP_R=28;
 const PZ=[30,58],AZ=[35,58]; // tighter zones = ~25% harder
 
 function ftEarned(name){
-  // Calculate earned FT attempts for today based on qualifying performance
-  const today=new Date().toISOString().split('T')[0];
-  const ds=D.dailyScores[today];if(!ds||!ds[name])return 0;
-  const s=ds[name],role=pRole(name);
-  if(role==='SDR')return s.transfers||0; // 1 attempt per warm transfer
-  return s.closes||0; // AE: 1 attempt per closed won sale
+  // Calculate total earned FT attempts across all contest days
+  const role=pRole(name);let total=0;
+  allDates().forEach(d=>{
+    const ds=D.dailyScores[d];if(!ds||!ds[name])return;
+    const s=ds[name];
+    if(role==='SDR')total+=(s.transfers||0);
+    else total+=(s.closes||0);
+  });
+  return total;
 }
 function ftUsed(name){
-  const today=new Date().toISOString().split('T')[0];
-  const ds=D.dailyScores[today];if(!ds||!ds[name])return 0;
-  return ds[name].ftAttempts||0;
+  // Count total FT attempts used across all contest days
+  let total=0;
+  allDates().forEach(d=>{
+    const ds=D.dailyScores[d];if(!ds||!ds[name])return;
+    total+=(ds[name].ftAttempts||0);
+  });
+  return total;
 }
 function ftRemaining(name){return Math.max(0,ftEarned(name)-ftUsed(name))}
 
@@ -753,13 +760,13 @@ function updateFTStatus(){
   const earned=ftEarned(name),used=ftUsed(name),remaining=ftRemaining(name);
   const role=pRole(name),qual=role==='SDR'?'warm transfers':'closed won sales';
   if(earned===0){
-    q.innerHTML=`<span style="color:var(--coral)">No attempts earned today. ${role==='SDR'?'Earn warm transfers':'Close deals'} to qualify.</span>`;
+    q.innerHTML=`<span style="color:var(--coral)">No attempts earned. ${role==='SDR'?'Earn warm transfers':'Close deals'} to qualify.</span>`;
     btn.disabled=true;
   }else if(remaining===0){
-    q.innerHTML=`<span style="color:var(--gr)">All ${earned} attempt${earned>1?'s':''} used today (from ${earned} ${qual}). Earn more ${qual} for additional attempts!</span>`;
+    q.innerHTML=`<span style="color:var(--gr)">All ${earned} attempt${earned>1?'s':''} used (from ${earned} ${qual}). Earn more ${qual} for additional attempts!</span>`;
     btn.disabled=true;
   }else{
-    q.innerHTML=`<span style="color:var(--green)">${remaining} attempt${remaining>1?'s':''} remaining today</span> <span style="color:var(--gl);font-size:.75rem">(${earned} earned from ${qual}, ${used} used)</span>`;
+    q.innerHTML=`<span style="color:var(--green)">${remaining} attempt${remaining>1?'s':''} remaining</span> <span style="color:var(--gl);font-size:.75rem">(${earned} earned from ${qual}, ${used} used)</span>`;
     btn.disabled=false;
   }
   ftS='idle';drawCourt();
