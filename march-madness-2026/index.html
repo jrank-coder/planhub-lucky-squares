@@ -677,12 +677,14 @@ function renderIndLB(filter){
   if(filter==='FT'){
     list.sort((a,b)=>b.ftPts-a.ftPts);
     const best=list.find(x=>x.ftPts>0);
-    let h=`<table class="stbl"><tr><th>#</th><th>Player</th><th>Team</th><th>Role</th><th class="r">FT Made</th><th class="r">FT Pts</th></tr>`;
+    let h=`<table class="stbl"><tr><th>#</th><th>Player</th><th>Team</th><th>Role</th><th class="r">FT Att</th><th class="r">FT Made</th><th class="r">FT %</th><th class="r">FT Pts</th></tr>`;
     list.forEach((p,i)=>{
       let badge=best&&p.name===best.name&&best.ftPts>0?' <span class="award-badge">FT Crown</span>':'';
+      const att=p.stats.ftAtt||0,made=p.stats.ftMade||0;
+      const pct=att>0?Math.round((made/att)*100):0;
       h+=`<tr><td style="font-weight:800;color:var(--tl)">${i+1}</td><td style="font-weight:600">${p.name}${badge}</td>
         <td style="font-size:.75rem;color:var(--gl)">${p.tn}</td><td><span class="role-badge ${p.role.toLowerCase()}">${p.role}</span></td>
-        <td class="r">${Math.round(p.ftPts/ftMult())}</td><td class="r b">${p.ftPts}</td></tr>`});
+        <td class="r">${att}</td><td class="r">${made}</td><td class="r" style="color:${pct>=50?'var(--green)':pct>0?'var(--coral)':'var(--gr)'}">${att>0?pct+'%':'-'}</td><td class="r b">${p.ftPts}</td></tr>`});
     h+=`</table>`;document.getElementById('indLB').innerHTML=h;return;
   }
 
