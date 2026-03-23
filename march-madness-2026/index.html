@@ -1090,9 +1090,9 @@ function loadSimulation(){
 
 // ============ SYNC DISPLAY ============
 function updateSyncDisplay(ts){
-  const fmt=ts?new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'--';
-  const hdr=document.getElementById('lastSyncHeader');if(hdr)hdr.textContent='Synced: '+fmt;
-  const adm=document.getElementById('adminLastSync');if(adm)adm.textContent='Last sync: '+fmt;
+  const fmt=ts?new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'Awaiting first sync';
+  const hdr=document.getElementById('lastSyncHeader');if(hdr)hdr.textContent=ts?'Synced: '+fmt:fmt;
+  const adm=document.getElementById('adminLastSync');if(adm)adm.textContent=ts?'Last sync: '+fmt:fmt;
 }
 function refreshFromHS(){
   const btn=document.getElementById('refreshBtn');
@@ -1126,7 +1126,7 @@ if(Object.keys(D.dailyScores).length===0)loadSimulation();
 startFirebaseListener();
 // Push initial data to Firebase if it's a fresh start
 dbRef.once('value').then(snap=>{if(!snap.val())save()});
-if(D.lastSync)updateSyncDisplay(D.lastSync);
+updateSyncDisplay(D.lastSync||null);
 renderBracket();setInterval(renderCD,60000);
 </script>
 </body>
