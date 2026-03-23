@@ -368,6 +368,13 @@ button{cursor:pointer;font-family:var(--f)}input,select,textarea{font-family:var
           <div class="afg"><label>Reason</label><input type="text" id="aOR" class="ain" placeholder="Reason"></div>
           <button class="abtn p" onclick="saveOverride()">Apply</button><div id="aOMsg"></div>
         </div>
+        <!-- Grant Free Throw -->
+        <div class="asec">
+          <h3>Grant Free Throw</h3>
+          <div class="afg"><label>Player</label><select id="aFTP" class="asl"></select></div>
+          <div class="afg"><label>Attempts to Grant</label><input type="number" id="aFTN" class="ain" min="1" value="1"></div>
+          <button class="abtn p" onclick="grantFT()">Grant</button><div id="aFTMsg"></div>
+        </div>
         <!-- Bracket -->
         <div class="asec">
           <h3>Bracket Control</h3>
@@ -732,13 +739,14 @@ const HOOP_X=350,HOOP_Y=100,HOOP_R=28;
 const PZ=[30,58],AZ=[35,58]; // tighter zones = ~25% harder
 
 function ftEarned(name){
-  // Calculate total earned FT attempts across all contest days
+  // Calculate total earned FT attempts across all contest days (qualifying events + admin bonuses)
   const role=pRole(name);let total=0;
   allDates().forEach(d=>{
     const ds=D.dailyScores[d];if(!ds||!ds[name])return;
     const s=ds[name];
     if(role==='SDR')total+=(s.transfers||0);
     else total+=(s.closes||0);
+    total+=(s.ftBonus||0);
   });
   return total;
 }
@@ -1032,7 +1040,7 @@ function showAP(){document.getElementById('aLogin').style.display='none';documen
 
 function popDropdowns(){
   const ps=allP(),opts=ps.map(p=>`<option value="${p.name}">${p.name} (${p.role} - ${p.tn})</option>`).join('');
-  ['aSP','aOP','aMP'].forEach(id=>{document.getElementById(id).innerHTML='<option value="">Select...</option>'+opts});
+  ['aSP','aOP','aMP','aFTP'].forEach(id=>{document.getElementById(id).innerHTML='<option value="">Select...</option>'+opts});
   const tOpts=D.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
   document.getElementById('aMT').innerHTML=tOpts;
   document.getElementById('aETSel').innerHTML='<option value="">Select Team...</option>'+tOpts;
@@ -1078,6 +1086,18 @@ function saveOverride(){const p=document.getElementById('aOP').value,d=document.
   if(!D.dailyScores[d][p])D.dailyScores[d][p]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,override:0};
   D.dailyScores[d][p].override=(D.dailyScores[d][p].override||0)+pts;D.overrides.push({player:p,date:d,points:pts,reason:r,timestamp:new Date().toISOString()});
   save();document.getElementById('aOMsg').innerHTML='<div class="amsg ok">Applied!</div>';setTimeout(()=>document.getElementById('aOMsg').innerHTML='',2000)}
+
+function grantFT(){
+  const p=document.getElementById('aFTP').value,n=parseInt(document.getElementById('aFTN').value)||0;
+  if(!p||n<1)return;
+  const today=new Date().toISOString().split('T')[0];
+  if(!D.dailyScores[today])D.dailyScores[today]={};
+  if(!D.dailyScores[today][p])D.dailyScores[today][p]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,override:0};
+  D.dailyScores[today][p].ftBonus=(D.dailyScores[today][p].ftBonus||0)+n;
+  save();
+  document.getElementById('aFTMsg').innerHTML=`<div class="amsg ok">Granted ${n} FT attempt${n>1?'s':''} to ${p}!</div>`;
+  setTimeout(()=>document.getElementById('aFTMsg').innerHTML='',3000);
+}
 
 function renderAB(){const cr=D.settings.currentRound,rd=cr===1?D.bracket.round1:cr===2?D.bracket.round2:D.bracket.round3;
   const dates=rDates(cr);let h='';
