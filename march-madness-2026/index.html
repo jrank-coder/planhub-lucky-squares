@@ -575,7 +575,7 @@ function pDay(n,d){
   let callPts=role==='SDR'?(callCount>=150?2:0):(callCount>=100?2:0);
   let closePts=role==='SDR'?(s.sdrCloses||0)*5:(s.closes||0)*3;
   let transPts=role==='SDR'?(s.transfers||0)*2:0;
-  let ftPts=(s.ftMakes||0)*ftMult();
+  let ftPts=s.ftPoints||0;
   let ov=s.override||0;
   return{callPts,closePts,transPts,ftPts,override:ov,total:callPts+closePts+transPts+ftPts+ov,rawCloses:s.closes||0,rawSdrCloses:s.sdrCloses||0,rawTrans:s.transfers||0,rawFtMakes:s.ftMakes||0,rawFtAtt:s.ftAttempts||0}
 }
@@ -979,9 +979,9 @@ function finishShot(made){
   const today=new Date().toISOString().split('T')[0];
   D.freeThrowLog.push({player,team:pTeam(player)?.name||'',date:today,made,pts,timestamp:new Date().toISOString()});
   if(!D.dailyScores[today])D.dailyScores[today]={};
-  if(!D.dailyScores[today][player])D.dailyScores[today][player]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,override:0};
+  if(!D.dailyScores[today][player])D.dailyScores[today][player]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,ftPoints:0,override:0};
   D.dailyScores[today][player].ftAttempts=(D.dailyScores[today][player].ftAttempts||0)+1;
-  if(made)D.dailyScores[today][player].ftMakes=(D.dailyScores[today][player].ftMakes||0)+1;
+  if(made){D.dailyScores[today][player].ftMakes=(D.dailyScores[today][player].ftMakes||0)+1;D.dailyScores[today][player].ftPoints=(D.dailyScores[today][player].ftPoints||0)+pts;}
   const tm=pTeam(player);
   D.newsFeed.unshift({id:Date.now(),type:'free-throw',
     title:made?`${player} drains the free throw!${D.settings.madnessMode?' (MADNESS 2X!)':''}`:`${player} misses at the line`,
@@ -1190,12 +1190,12 @@ function saveScore(){const d=document.getElementById('aSD').value,p=document.get
   D.dailyScores[d][p]={calls:parseInt(document.getElementById('aSC').value)||0,closes:parseInt(document.getElementById('aSCl').value)||0,
     sdrCloses:parseInt(document.getElementById('aSSC').value)||0,
     transfers:parseInt(document.getElementById('aST').value)||0,ftAttempts:parseInt(document.getElementById('aSFA').value)||0,
-    ftMakes:parseInt(document.getElementById('aSFM').value)||0,override:ex.override||0};
+    ftMakes:parseInt(document.getElementById('aSFM').value)||0,ftPoints:ex.ftPoints||0,override:ex.override||0};
   save();document.getElementById('aSMsg').innerHTML='<div class="amsg ok">Saved!</div>';setTimeout(()=>document.getElementById('aSMsg').innerHTML='',2000)}
 
 function saveOverride(){const p=document.getElementById('aOP').value,d=document.getElementById('aOD').value,pts=parseInt(document.getElementById('aOPts').value)||0,r=document.getElementById('aOR').value;
   if(!p||!d||pts===0)return;if(!D.dailyScores[d])D.dailyScores[d]={};
-  if(!D.dailyScores[d][p])D.dailyScores[d][p]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,override:0};
+  if(!D.dailyScores[d][p])D.dailyScores[d][p]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,ftPoints:0,override:0};
   D.dailyScores[d][p].override=(D.dailyScores[d][p].override||0)+pts;D.overrides.push({player:p,date:d,points:pts,reason:r,timestamp:new Date().toISOString()});
   save();document.getElementById('aOMsg').innerHTML='<div class="amsg ok">Applied!</div>';setTimeout(()=>document.getElementById('aOMsg').innerHTML='',2000)}
 
@@ -1204,7 +1204,7 @@ function grantFT(){
   if(!p||n<1)return;
   const today=new Date().toISOString().split('T')[0];
   if(!D.dailyScores[today])D.dailyScores[today]={};
-  if(!D.dailyScores[today][p])D.dailyScores[today][p]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,override:0};
+  if(!D.dailyScores[today][p])D.dailyScores[today][p]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,ftPoints:0,override:0};
   D.dailyScores[today][p].ftBonus=(D.dailyScores[today][p].ftBonus||0)+n;
   save();
   document.getElementById('aFTMsg').innerHTML=`<div class="amsg ok">Granted ${n} FT attempt${n>1?'s':''} to ${p}!</div>`;
