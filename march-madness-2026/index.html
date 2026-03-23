@@ -852,106 +852,16 @@ function shootBall(){
   ab();
 }
 
-// Audio: realistic crowd cheering / booing using layered Web Audio synthesis
+// Audio: crowd cheering / booing using real MP3 files
+const cheerAudio=new Audio('cheer.mp3');
+const booAudio=new Audio('boo.mp3');
+cheerAudio.preload='auto';booAudio.preload='auto';
 function playCrowdSound(cheer){
   try{
-    const ac=new(window.AudioContext||window.webkitAudioContext)(),now=ac.currentTime;
-    const dur=cheer?2.5:1.8,master=ac.createGain();
-    master.gain.value=0.5;master.connect(ac.destination);
-
-    if(cheer){
-      // Layer 1: Crowd noise (broad filtered noise = many voices)
-      for(let v=0;v<8;v++){
-        const buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=buf.getChannelData(0);
-        const freq=600+Math.random()*2400,phase=Math.random()*Math.PI*2;
-        for(let i=0;i<d.length;i++){
-          const t=i/ac.sampleRate;
-          d[i]=(Math.random()*2-1)*0.15;
-          // Simulated voice: vowel-like formants with vibrato
-          d[i]+=Math.sin(t*(freq+Math.sin(t*5+phase)*80))*0.06;
-          d[i]+=Math.sin(t*(freq*1.5+Math.sin(t*7+phase)*60))*0.03;
-        }
-        const src=ac.createBufferSource();src.buffer=buf;
-        const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=800+Math.random()*2000;bp.Q.value=0.8+Math.random()*1.5;
-        const env=ac.createGain();
-        env.gain.setValueAtTime(0,now);
-        env.gain.linearRampToValueAtTime(0.12,now+0.15+Math.random()*0.2);
-        env.gain.setValueAtTime(0.12,now+dur*0.6);
-        env.gain.linearRampToValueAtTime(0,now+dur);
-        src.connect(bp);bp.connect(env);env.connect(master);
-        src.start(now+Math.random()*0.1);src.stop(now+dur);
-      }
-      // Layer 2: Clapping (short bursts of filtered noise)
-      for(let c=0;c<12;c++){
-        const cDur=0.03+Math.random()*0.02;
-        const buf=ac.createBuffer(1,ac.sampleRate*cDur,ac.sampleRate),d=buf.getChannelData(0);
-        for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*0.4;
-        const src=ac.createBufferSource();src.buffer=buf;
-        const hp=ac.createBiquadFilter();hp.type='highpass';hp.frequency.value=2000+Math.random()*3000;
-        const env=ac.createGain();env.gain.value=0.15+Math.random()*0.1;
-        src.connect(hp);hp.connect(env);env.connect(master);
-        src.start(now+0.2+Math.random()*1.5);
-      }
-      // Layer 3: Whistles (sine waves with slight warble)
-      for(let w=0;w<2;w++){
-        const osc=ac.createOscillator();osc.type='sine';
-        osc.frequency.setValueAtTime(2800+Math.random()*600,now);
-        const lfo=ac.createOscillator();lfo.frequency.value=5+Math.random()*3;
-        const lfoGain=ac.createGain();lfoGain.gain.value=50;
-        lfo.connect(lfoGain);lfoGain.connect(osc.frequency);
-        const env=ac.createGain();
-        const wStart=now+0.3+Math.random()*0.8,wDur=0.3+Math.random()*0.4;
-        env.gain.setValueAtTime(0,wStart);
-        env.gain.linearRampToValueAtTime(0.04,wStart+0.05);
-        env.gain.setValueAtTime(0.04,wStart+wDur-0.05);
-        env.gain.linearRampToValueAtTime(0,wStart+wDur);
-        osc.connect(env);env.connect(master);
-        osc.start(wStart);osc.stop(wStart+wDur);lfo.start(wStart);lfo.stop(wStart+wDur);
-      }
-    }else{
-      // BOOING: loud crowd groan with mid-range voices
-      // Layer 1: Multiple voices at audible mid-range "boooo"
-      for(let v=0;v<12;v++){
-        const osc=ac.createOscillator();
-        osc.type='sawtooth';
-        const baseF=150+Math.random()*200; // 150-350Hz range, clearly audible
-        osc.frequency.setValueAtTime(baseF,now);
-        osc.frequency.linearRampToValueAtTime(baseF*0.85,now+dur); // descending pitch
-        const bp=ac.createBiquadFilter();bp.type='bandpass';
-        bp.frequency.value=300+Math.random()*400;bp.Q.value=0.5;
-        const env=ac.createGain();
-        const vStart=Math.random()*0.15;
-        env.gain.setValueAtTime(0,now);
-        env.gain.linearRampToValueAtTime(0.06,now+0.15+vStart);
-        env.gain.setValueAtTime(0.06,now+dur*0.6);
-        env.gain.linearRampToValueAtTime(0,now+dur);
-        osc.connect(bp);bp.connect(env);env.connect(master);
-        osc.start(now+vStart);osc.stop(now+dur);
-      }
-      // Layer 2: Crowd noise bed
-      const nBuf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),nd=nBuf.getChannelData(0);
-      for(let i=0;i<nd.length;i++)nd[i]=(Math.random()*2-1);
-      const nSrc=ac.createBufferSource();nSrc.buffer=nBuf;
-      const nBp=ac.createBiquadFilter();nBp.type='bandpass';nBp.frequency.value=500;nBp.Q.value=0.3;
-      const nEnv=ac.createGain();
-      nEnv.gain.setValueAtTime(0,now);nEnv.gain.linearRampToValueAtTime(0.15,now+0.2);
-      nEnv.gain.setValueAtTime(0.15,now+dur*0.6);nEnv.gain.linearRampToValueAtTime(0,now+dur);
-      nSrc.connect(nBp);nBp.connect(nEnv);nEnv.connect(master);
-      nSrc.start(now);nSrc.stop(now+dur);
-      // Layer 3: "Awww" descending tone
-      for(let a=0;a<3;a++){
-        const osc2=ac.createOscillator();osc2.type='sine';
-        const f=400+Math.random()*200;
-        osc2.frequency.setValueAtTime(f,now);
-        osc2.frequency.linearRampToValueAtTime(f*0.6,now+dur);
-        const env2=ac.createGain();
-        env2.gain.setValueAtTime(0,now);env2.gain.linearRampToValueAtTime(0.08,now+0.2);
-        env2.gain.setValueAtTime(0.08,now+dur*0.5);env2.gain.linearRampToValueAtTime(0,now+dur);
-        osc2.connect(env2);env2.connect(master);
-        osc2.start(now+Math.random()*0.1);osc2.stop(now+dur);
-      }
-    }
-    setTimeout(()=>ac.close(),(dur+0.5)*1000);
+    const snd=cheer?cheerAudio:booAudio;
+    snd.currentTime=0;
+    snd.volume=0.7;
+    snd.play().catch(()=>{});
   }catch(e){console.log('Audio not available')}
 }
 
