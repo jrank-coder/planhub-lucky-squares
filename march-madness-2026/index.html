@@ -546,7 +546,7 @@ function startFirebaseListener(){
     if(!val||fbSaving)return;
     // Merge Firebase data into local state
     if(val.dailyScores)D.dailyScores=val.dailyScores;
-    if(val.freeThrowLog){D.freeThrowLog=Array.isArray(val.freeThrowLog)?val.freeThrowLog:Object.values(val.freeThrowLog);D.freeThrowLog.sort((a,b)=>(a.timestamp||'').localeCompare(b.timestamp||''));}
+    if(val.freeThrowLog){D.freeThrowLog=Array.isArray(val.freeThrowLog)?val.freeThrowLog:Object.values(val.freeThrowLog);D.freeThrowLog.sort((a,b)=>(a.timestamp||'').localeCompare(b.timestamp||''));_ftCache=null;}
     if(val.newsFeed)D.newsFeed=val.newsFeed;
     if(val.overrides)D.overrides=val.overrides;
     if(val.bracket)D.bracket=val.bracket;
@@ -579,6 +579,29 @@ function rDates(r){return r===1?D.settings.contestDates.round1:r===2?D.settings.
 function allDates(){return[...D.settings.contestDates.round1,...D.settings.contestDates.round2,...D.settings.contestDates.round3]}
 function ftMult(){return D.settings.madnessMode?2:1}
 
+// ============ FT LOG AS SOURCE OF TRUTH ============
+// Compute FT stats entirely from freeThrowLog — immune to sync overwrites
+let _ftCache=null,_ftCacheKey='';
+function ftFromLog(){
+  const key=JSON.stringify(D.freeThrowLog||[]).length+'_'+(D.freeThrowLog||[]).length;
+  if(_ftCacheKey===key&&_ftCache)return _ftCache;
+  const stats={};
+  (D.freeThrowLog||[]).forEach(e=>{
+    if(!e||typeof e!=='object')return;
+    const p=e.player,d=e.date;if(!p||!d)return;
+    if(!stats[d])stats[d]={};
+    if(!stats[d][p])stats[d][p]={makes:0,attempts:0,points:0};
+    stats[d][p].attempts++;
+    if(e.made){stats[d][p].makes++;stats[d][p].points+=(e.pts||1);}
+  });
+  _ftCache=stats;_ftCacheKey=key;
+  return stats;
+}
+function ftLogFor(name,date){
+  const s=ftFromLog();
+  return(s[date]&&s[date][name])||{makes:0,attempts:0,points:0};
+}
+
 // ============ SCORING ============
 function pDay(n,d){
   const ds=D.dailyScores[d];if(!ds||!ds[n])return{callPts:0,closePts:0,transPts:0,ftPts:0,override:0,total:0,rawCloses:0,rawTrans:0,rawFtMakes:0,rawFtAtt:0};
@@ -587,9 +610,10 @@ function pDay(n,d){
   let callPts=role==='SDR'?(callCount>=150?2:0):(callCount>=100?2:0);
   let closePts=role==='SDR'?(s.sdrCloses||0)*5:(s.closes||0)*3;
   let transPts=role==='SDR'?(s.transfers||0)*2:0;
-  let ftPts=s.ftPoints||0;
+  const ft=ftLogFor(n,d);
+  let ftPts=ft.points;
   let ov=s.override||0;
-  return{callPts,closePts,transPts,ftPts,override:ov,total:callPts+closePts+transPts+ftPts+ov,rawCloses:s.closes||0,rawSdrCloses:s.sdrCloses||0,rawTrans:s.transfers||0,rawFtMakes:s.ftMakes||0,rawFtAtt:s.ftAttempts||0}
+  return{callPts,closePts,transPts,ftPts,override:ov,total:callPts+closePts+transPts+ftPts+ov,rawCloses:s.closes||0,rawSdrCloses:s.sdrCloses||0,rawTrans:s.transfers||0,rawFtMakes:ft.makes,rawFtAtt:ft.attempts}
 }
 function pTotal(n,dates){let t=0;dates.forEach(d=>{t+=pDay(n,d).total});return t}
 function pCat(n,dates){let c=0,cl=0,tr=0,ft=0;dates.forEach(d=>{const s=pDay(n,d);c+=s.callPts;cl+=s.closePts;tr+=s.transPts;ft+=s.ftPts});return{callPts:c,closePts:cl,transPts:tr,ftPts:ft,total:c+cl+tr+ft}}
@@ -708,7 +732,7 @@ function renderSB(){renderTeamSB();renderIndLB('all')}
 
 function tStats(tid,dates){const team=T(tid);if(!team)return{calls:0,closes:0,sdrCloses:0,trans:0,ftMade:0,ftAtt:0};
   let calls=0,closes=0,sdrCloses=0,trans=0,ftMade=0,ftAtt=0;
-  team.members.forEach(m=>{dates.forEach(d=>{const ds=D.dailyScores[d];if(ds&&ds[m.name]){const s=ds[m.name];calls+=(typeof s.calls==='number'?s.calls:0);closes+=(s.closes||0);sdrCloses+=(s.sdrCloses||0);trans+=(s.transfers||0);ftMade+=(s.ftMakes||0);ftAtt+=(s.ftAttempts||0)}})});
+  team.members.forEach(m=>{dates.forEach(d=>{const ds=D.dailyScores[d];if(ds&&ds[m.name]){const s=ds[m.name];calls+=(typeof s.calls==='number'?s.calls:0);closes+=(s.closes||0);sdrCloses+=(s.sdrCloses||0);trans+=(s.transfers||0)};const ft=ftLogFor(m.name,d);ftMade+=ft.makes;ftAtt+=ft.attempts})});
   return{calls,closes,sdrCloses,trans,ftMade,ftAtt}}
 
 function renderTeamSB(){
@@ -739,7 +763,7 @@ function renderTeamSB(){
 }
 
 function pStats(n,dates){let calls=0,closes=0,sdrCloses=0,trans=0,ftMade=0,ftAtt=0;
-  dates.forEach(d=>{const ds=D.dailyScores[d];if(ds&&ds[n]){const s=ds[n];calls+=(typeof s.calls==='number'?s.calls:0);closes+=(s.closes||0);sdrCloses+=(s.sdrCloses||0);trans+=(s.transfers||0);ftMade+=(s.ftMakes||0);ftAtt+=(s.ftAttempts||0)}});
+  dates.forEach(d=>{const ds=D.dailyScores[d];if(ds&&ds[n]){const s=ds[n];calls+=(typeof s.calls==='number'?s.calls:0);closes+=(s.closes||0);sdrCloses+=(s.sdrCloses||0);trans+=(s.transfers||0)};const ft=ftLogFor(n,d);ftMade+=ft.makes;ftAtt+=ft.attempts});
   return{calls,closes,sdrCloses,trans,ftMade,ftAtt}}
 
 function renderIndLB(filter){
@@ -815,12 +839,10 @@ function ftEarned(name){
   return total;
 }
 function ftUsed(name){
-  // Count total FT attempts used across all contest days
+  // Count total FT attempts from the log (source of truth)
   let total=0;
-  allDates().forEach(d=>{
-    const ds=D.dailyScores[d];if(!ds||!ds[name])return;
-    total+=(ds[name].ftAttempts||0);
-  });
+  const s=ftFromLog();
+  for(const d in s){if(s[d][name])total+=s[d][name].attempts;}
   return total;
 }
 function ftRemaining(name){return Math.max(0,ftEarned(name)-ftUsed(name))}
@@ -992,10 +1014,8 @@ function finishShot(made){
   const ftEntry={player,team:pTeam(player)?.name||'',date:today,made,pts,timestamp:new Date().toISOString()};
   D.freeThrowLog.push(ftEntry);
   saveFTEntry(ftEntry);
-  if(!D.dailyScores[today])D.dailyScores[today]={};
-  if(!D.dailyScores[today][player])D.dailyScores[today][player]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,ftPoints:0,override:0};
-  D.dailyScores[today][player].ftAttempts=(D.dailyScores[today][player].ftAttempts||0)+1;
-  if(made){D.dailyScores[today][player].ftMakes=(D.dailyScores[today][player].ftMakes||0)+1;D.dailyScores[today][player].ftPoints=(D.dailyScores[today][player].ftPoints||0)+pts;}
+  // FT stats are computed from freeThrowLog — no need to write to dailyScores
+  _ftCache=null; // Invalidate FT cache so scores recompute from log
   const tm=pTeam(player);
   D.newsFeed.unshift({id:Date.now(),type:'free-throw',
     title:made?`${player} drains the free throw!${D.settings.madnessMode?' (MADNESS 2X!)':''}`:`${player} misses at the line`,
@@ -1177,8 +1197,9 @@ function popDropdowns(){
       document.getElementById('aSdrCG').style.display=isSDR?'block':'none';
       const d=document.getElementById('aSD').value,ds=D.dailyScores[d];
       if(ds&&ds[p]){const s=ds[p];document.getElementById('aSC').value=typeof s.calls==='number'?s.calls:(s.calls?999:0);document.getElementById('aSCl').value=s.closes||0;
-        document.getElementById('aSSC').value=s.sdrCloses||0;document.getElementById('aST').value=s.transfers||0;document.getElementById('aSFA').value=s.ftAttempts||0;document.getElementById('aSFM').value=s.ftMakes||0}
-      else{document.getElementById('aSC').value=0;document.getElementById('aSCl').value=0;document.getElementById('aSSC').value=0;document.getElementById('aST').value=0;document.getElementById('aSFA').value=0;document.getElementById('aSFM').value=0}
+        document.getElementById('aSSC').value=s.sdrCloses||0;document.getElementById('aST').value=s.transfers||0}
+      else{document.getElementById('aSC').value=0;document.getElementById('aSCl').value=0;document.getElementById('aSSC').value=0;document.getElementById('aST').value=0}
+      const ftL=ftLogFor(p,d);document.getElementById('aSFA').value=ftL.attempts;document.getElementById('aSFM').value=ftL.makes;
       updCallStatus(p);
     }else document.getElementById('aSF').style.display='none'}
 }
@@ -1203,13 +1224,12 @@ function saveScore(){const d=document.getElementById('aSD').value,p=document.get
   if(!D.dailyScores[d])D.dailyScores[d]={};const ex=D.dailyScores[d][p]||{};
   D.dailyScores[d][p]={calls:parseInt(document.getElementById('aSC').value)||0,closes:parseInt(document.getElementById('aSCl').value)||0,
     sdrCloses:parseInt(document.getElementById('aSSC').value)||0,
-    transfers:parseInt(document.getElementById('aST').value)||0,ftAttempts:parseInt(document.getElementById('aSFA').value)||0,
-    ftMakes:parseInt(document.getElementById('aSFM').value)||0,ftPoints:ex.ftPoints||0,override:ex.override||0};
+    transfers:parseInt(document.getElementById('aST').value)||0,override:ex.override||0};
   save();document.getElementById('aSMsg').innerHTML='<div class="amsg ok">Saved!</div>';setTimeout(()=>document.getElementById('aSMsg').innerHTML='',2000)}
 
 function saveOverride(){const p=document.getElementById('aOP').value,d=document.getElementById('aOD').value,pts=parseInt(document.getElementById('aOPts').value)||0,r=document.getElementById('aOR').value;
   if(!p||!d||pts===0)return;if(!D.dailyScores[d])D.dailyScores[d]={};
-  if(!D.dailyScores[d][p])D.dailyScores[d][p]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,ftPoints:0,override:0};
+  if(!D.dailyScores[d][p])D.dailyScores[d][p]={calls:0,closes:0,sdrCloses:0,transfers:0,override:0};
   D.dailyScores[d][p].override=(D.dailyScores[d][p].override||0)+pts;D.overrides.push({player:p,date:d,points:pts,reason:r,timestamp:new Date().toISOString()});
   save();document.getElementById('aOMsg').innerHTML='<div class="amsg ok">Applied!</div>';setTimeout(()=>document.getElementById('aOMsg').innerHTML='',2000)}
 
@@ -1218,7 +1238,7 @@ function grantFT(){
   if(!p||n<1)return;
   const today=new Date().toISOString().split('T')[0];
   if(!D.dailyScores[today])D.dailyScores[today]={};
-  if(!D.dailyScores[today][p])D.dailyScores[today][p]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,ftPoints:0,override:0};
+  if(!D.dailyScores[today][p])D.dailyScores[today][p]={calls:0,closes:0,sdrCloses:0,transfers:0,override:0};
   D.dailyScores[today][p].ftBonus=(D.dailyScores[today][p].ftBonus||0)+n;
   save();
   document.getElementById('aFTMsg').innerHTML=`<div class="amsg ok">Granted ${n} FT attempt${n>1?'s':''} to ${p}!</div>`;
@@ -1363,7 +1383,7 @@ function loadSimulation(){
     if(!D.dailyScores[date])D.dailyScores[date]={};
     for(const[name,data] of Object.entries(players)){
       const ex=D.dailyScores[date][name]||{};
-      D.dailyScores[date][name]={...data,ftAttempts:ex.ftAttempts||0,ftMakes:ex.ftMakes||0,override:ex.override||0};
+      D.dailyScores[date][name]={...data,override:ex.override||0};
     }
   }
   save();
@@ -1383,7 +1403,7 @@ function refreshFromHS(){
     const val=snap.val();
     if(val&&val.dailyScores){
       D.dailyScores=val.dailyScores;
-      if(val.freeThrowLog){D.freeThrowLog=Array.isArray(val.freeThrowLog)?val.freeThrowLog:Object.values(val.freeThrowLog);D.freeThrowLog.sort((a,b)=>(a.timestamp||'').localeCompare(b.timestamp||''));}
+      if(val.freeThrowLog){D.freeThrowLog=Array.isArray(val.freeThrowLog)?val.freeThrowLog:Object.values(val.freeThrowLog);D.freeThrowLog.sort((a,b)=>(a.timestamp||'').localeCompare(b.timestamp||''));_ftCache=null;}
       if(val.bracket)D.bracket=val.bracket;
       if(val.overrides)D.overrides=val.overrides;
       if(val.lastSync){D.lastSync=val.lastSync;updateSyncDisplay(val.lastSync)}
