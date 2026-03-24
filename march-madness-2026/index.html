@@ -519,12 +519,24 @@ function load(){
 function save(){
   // Save to localStorage as fallback
   localStorage.setItem('planhub_mm_2026',JSON.stringify(D));
-  // Save to Firebase
+  // Save to Firebase using multi-path update (NEVER use .set() — it overwrites everything)
   if(!fbSaving){
     fbSaving=true;
-    const data={dailyScores:D.dailyScores||{},freeThrowLog:D.freeThrowLog||[],newsFeed:D.newsFeed||[],overrides:D.overrides||[],bracket:D.bracket,settings:{currentRound:D.settings.currentRound,madnessMode:D.settings.madnessMode,contestDates:D.settings.contestDates},teams:D.teams,lastSync:D.lastSync||null};
-    dbRef.set(data).then(()=>{fbSaving=false}).catch(e=>{console.log('Firebase save error:',e.message);fbSaving=false});
+    const updates={};
+    updates['dailyScores']=D.dailyScores||{};
+    updates['newsFeed']=D.newsFeed||[];
+    updates['overrides']=D.overrides||[];
+    updates['bracket']=D.bracket;
+    updates['settings']={currentRound:D.settings.currentRound,madnessMode:D.settings.madnessMode,contestDates:D.settings.contestDates};
+    updates['teams']=D.teams;
+    if(D.lastSync)updates['lastSync']=D.lastSync;
+    // NOTE: freeThrowLog is NOT included here — it's written via saveFTEntry() using push()
+    dbRef.update(updates).then(()=>{fbSaving=false}).catch(e=>{console.log('Firebase save error:',e.message);fbSaving=false});
   }
+}
+function saveFTEntry(entry){
+  // Append a single FT entry to Firebase using push() — never overwrites existing entries
+  firebase.database().ref('contest/freeThrowLog').push(entry);
 }
 function startFirebaseListener(){
   if(fbListening)return;
@@ -534,7 +546,7 @@ function startFirebaseListener(){
     if(!val||fbSaving)return;
     // Merge Firebase data into local state
     if(val.dailyScores)D.dailyScores=val.dailyScores;
-    if(val.freeThrowLog)D.freeThrowLog=val.freeThrowLog;
+    if(val.freeThrowLog){D.freeThrowLog=Array.isArray(val.freeThrowLog)?val.freeThrowLog:Object.values(val.freeThrowLog);D.freeThrowLog.sort((a,b)=>(a.timestamp||'').localeCompare(b.timestamp||''));}
     if(val.newsFeed)D.newsFeed=val.newsFeed;
     if(val.overrides)D.overrides=val.overrides;
     if(val.bracket)D.bracket=val.bracket;
@@ -977,7 +989,9 @@ function finishShot(made){
   else{r.className='ft-res missed';r.textContent='NO GOOD!'}
   r.style.display='block';
   const today=new Date().toISOString().split('T')[0];
-  D.freeThrowLog.push({player,team:pTeam(player)?.name||'',date:today,made,pts,timestamp:new Date().toISOString()});
+  const ftEntry={player,team:pTeam(player)?.name||'',date:today,made,pts,timestamp:new Date().toISOString()};
+  D.freeThrowLog.push(ftEntry);
+  saveFTEntry(ftEntry);
   if(!D.dailyScores[today])D.dailyScores[today]={};
   if(!D.dailyScores[today][player])D.dailyScores[today][player]={calls:0,closes:0,sdrCloses:0,transfers:0,ftAttempts:0,ftMakes:0,ftPoints:0,override:0};
   D.dailyScores[today][player].ftAttempts=(D.dailyScores[today][player].ftAttempts||0)+1;
@@ -1369,7 +1383,7 @@ function refreshFromHS(){
     const val=snap.val();
     if(val&&val.dailyScores){
       D.dailyScores=val.dailyScores;
-      if(val.freeThrowLog)D.freeThrowLog=val.freeThrowLog;
+      if(val.freeThrowLog){D.freeThrowLog=Array.isArray(val.freeThrowLog)?val.freeThrowLog:Object.values(val.freeThrowLog);D.freeThrowLog.sort((a,b)=>(a.timestamp||'').localeCompare(b.timestamp||''));}
       if(val.bracket)D.bracket=val.bracket;
       if(val.overrides)D.overrides=val.overrides;
       if(val.lastSync){D.lastSync=val.lastSync;updateSyncDisplay(val.lastSync)}
