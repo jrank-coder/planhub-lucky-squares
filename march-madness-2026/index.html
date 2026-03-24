@@ -545,7 +545,17 @@ function startFirebaseListener(){
     const val=snap.val();
     if(!val||fbSaving)return;
     // Merge Firebase data into local state
-    if(val.dailyScores)D.dailyScores=val.dailyScores;
+    if(val.ftEarnedHWM)loadHWM(val.ftEarnedHWM);
+    if(val.dailyScores){D.dailyScores=val.dailyScores;
+      // Update high-water marks from new data
+      let hwmChanged=false;
+      for(const d in val.dailyScores){for(const n in val.dailyScores[d]){
+        const s=val.dailyScores[d][n],old=(_ftHWM[n]&&_ftHWM[n][d])||{closes:0,transfers:0};
+        const h=ftHWM(n,d,s.closes,s.transfers);
+        if(h.closes>old.closes||h.transfers>old.transfers)hwmChanged=true;
+      }}
+      if(hwmChanged)saveHWM();
+    }
     if(val.freeThrowLog){D.freeThrowLog=Array.isArray(val.freeThrowLog)?val.freeThrowLog:Object.values(val.freeThrowLog);D.freeThrowLog.sort((a,b)=>(a.timestamp||'').localeCompare(b.timestamp||''));_ftCache=null;}
     if(val.newsFeed)D.newsFeed=val.newsFeed;
     if(val.overrides)D.overrides=val.overrides;
@@ -826,14 +836,34 @@ const CW=700,CH=500;
 const HOOP_X=350,HOOP_Y=100,HOOP_R=28;
 const PZ=[30,58],AZ=[35,58]; // tighter zones = ~25% harder
 
+// ============ FT EARNED HIGH-WATER MARK ============
+// Earned attempts can only go UP, never down. Protects against sync temporarily lowering closes/transfers.
+let _ftHWM={}; // {player: {date: {closes:N, transfers:N}}}
+function ftHWM(name,date,closes,transfers){
+  if(!_ftHWM[name])_ftHWM[name]={};
+  if(!_ftHWM[name][date])_ftHWM[name][date]={closes:0,transfers:0};
+  const h=_ftHWM[name][date];
+  h.closes=Math.max(h.closes,closes||0);
+  h.transfers=Math.max(h.transfers,transfers||0);
+  return h;
+}
+// Persist HWM to Firebase so it survives page reloads
+function saveHWM(){
+  if(typeof firebase!=='undefined'&&firebase.database){
+    firebase.database().ref('contest/ftEarnedHWM').set(_ftHWM);
+  }
+}
+function loadHWM(data){if(data&&typeof data==='object')_ftHWM=data;}
+
 function ftEarned(name){
-  // Calculate total earned FT attempts across all contest days (qualifying events + admin bonuses)
+  // Calculate total earned FT attempts using high-water mark (only goes up)
   const role=pRole(name);let total=0;
   allDates().forEach(d=>{
     const ds=D.dailyScores[d];if(!ds||!ds[name])return;
     const s=ds[name];
-    if(role==='SDR')total+=(s.transfers||0);
-    else total+=(s.closes||0);
+    const h=ftHWM(name,d,s.closes,s.transfers);
+    if(role==='SDR')total+=h.transfers;
+    else total+=h.closes;
     total+=(s.ftBonus||0);
   });
   return total;
