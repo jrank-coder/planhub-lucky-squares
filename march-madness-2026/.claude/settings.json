@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Bash(curl *)",
+      "Bash(python -c *)",
+      "Bash(python3 -c *)",
+      "Bash(PYTHONIOENCODING=utf-8 python3 *)",
+      "mcp__501ea901-d805-419a-8544-9d57ea5ea4ce__search_crm_objects"
+    ]
+  }
+}
