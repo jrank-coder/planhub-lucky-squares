@@ -526,13 +526,16 @@ function save(){
     updates['dailyScores']=D.dailyScores||{};
     updates['newsFeed']=D.newsFeed||[];
     updates['overrides']=D.overrides||[];
-    updates['bracket']=D.bracket;
     updates['settings']={currentRound:D.settings.currentRound,madnessMode:D.settings.madnessMode,contestDates:D.settings.contestDates};
     updates['teams']=D.teams;
     if(D.lastSync)updates['lastSync']=D.lastSync;
     // NOTE: freeThrowLog is NOT included here — it's written via saveFTEntry() using push()
     dbRef.update(updates).then(()=>{fbSaving=false}).catch(e=>{console.log('Firebase save error:',e.message);fbSaving=false});
   }
+}
+function saveBracket(){
+  firebase.database().ref('contest/bracket').set(D.bracket);
+  localStorage.setItem('planhub_mm_2026',JSON.stringify(D));
 }
 function saveFTEntry(entry){
   // Append a single FT entry to Firebase using push() — never overwrites existing entries
@@ -1293,13 +1296,13 @@ function setW(mid,r,w){const rd=r===1?D.bracket.round1:r===2?D.bracket.round2:D.
   else if(r===2){D.bracket.round3[0].t1=D.bracket.round2[0].w;D.bracket.round3[0].t2=D.bracket.round2[1].w}
   const tm=T(w),lid=m.t1===w?m.t2:m.t1,lt=T(lid);
   if(tm&&lt)D.newsFeed.unshift({id:Date.now(),type:'highlight',title:`${tm.name} advances!`,body:`${tm.name} defeats ${lt.name}!`,timestamp:new Date().toISOString()});
-  save();renderAB();renderBracket()}
+  saveBracket();save();renderAB();renderBracket()}
 
 function clrW(mid,r){const rd=r===1?D.bracket.round1:r===2?D.bracket.round2:D.bracket.round3;const m=rd.find(x=>x.mid===mid);if(!m)return;m.w=null;
   if(r===1){D.bracket.round2[0].t1=D.bracket.round1[0].w;D.bracket.round2[0].t2=D.bracket.round1[1].w;D.bracket.round2[1].t1=D.bracket.round1[2].w;D.bracket.round2[1].t2=D.bracket.round1[3].w;
     D.bracket.round2.forEach(x=>{x.w=null});D.bracket.round3[0].t1=null;D.bracket.round3[0].t2=null;D.bracket.round3[0].w=null}
   else if(r===2){D.bracket.round3[0].t1=D.bracket.round2[0].w;D.bracket.round3[0].t2=D.bracket.round2[1].w;D.bracket.round3[0].w=null}
-  save();renderAB();renderBracket()}
+  saveBracket();save();renderAB();renderBracket()}
 
 function updAdminRound(){D.settings.currentRound=parseInt(document.getElementById('aRnd').value);save();renderAB();renderBracket()}
 function movePlayer(){const pn=document.getElementById('aMP').value,tid=parseInt(document.getElementById('aMT').value);if(!pn||!tid)return;
