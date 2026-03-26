@@ -534,7 +534,9 @@ function save(){
   }
 }
 function saveBracket(){
-  firebase.database().ref('contest/bracket').set(D.bracket);
+  // Firebase .set() rejects undefined — replace with null
+  const clean=JSON.parse(JSON.stringify(D.bracket,(_,v)=>v===undefined?null:v));
+  firebase.database().ref('contest/bracket').set(clean);
   localStorage.setItem('planhub_mm_2026',JSON.stringify(D));
 }
 function saveFTEntry(entry){
@@ -1292,16 +1294,16 @@ function renderAB(){const cr=D.settings.currentRound,rd=cr===1?D.bracket.round1:
   document.getElementById('aBM').innerHTML=h||'<p style="font-size:.8rem;color:var(--gr)">Advance previous rounds first.</p>'}
 
 function setW(mid,r,w){const rd=r===1?D.bracket.round1:r===2?D.bracket.round2:D.bracket.round3;const m=rd.find(x=>x.mid===mid);if(!m)return;m.w=w;
-  if(r===1){D.bracket.round2[0].t1=D.bracket.round1[0].w;D.bracket.round2[0].t2=D.bracket.round1[1].w;D.bracket.round2[1].t1=D.bracket.round1[2].w;D.bracket.round2[1].t2=D.bracket.round1[3].w}
-  else if(r===2){D.bracket.round3[0].t1=D.bracket.round2[0].w;D.bracket.round3[0].t2=D.bracket.round2[1].w}
+  if(r===1){D.bracket.round2[0].t1=D.bracket.round1[0].w||null;D.bracket.round2[0].t2=D.bracket.round1[1].w||null;D.bracket.round2[1].t1=D.bracket.round1[2].w||null;D.bracket.round2[1].t2=D.bracket.round1[3].w||null}
+  else if(r===2){D.bracket.round3[0].t1=D.bracket.round2[0].w||null;D.bracket.round3[0].t2=D.bracket.round2[1].w||null}
   const tm=T(w),lid=m.t1===w?m.t2:m.t1,lt=T(lid);
   if(tm&&lt)D.newsFeed.unshift({id:Date.now(),type:'highlight',title:`${tm.name} advances!`,body:`${tm.name} defeats ${lt.name}!`,timestamp:new Date().toISOString()});
   saveBracket();save();renderAB();renderBracket()}
 
 function clrW(mid,r){const rd=r===1?D.bracket.round1:r===2?D.bracket.round2:D.bracket.round3;const m=rd.find(x=>x.mid===mid);if(!m)return;m.w=null;
-  if(r===1){D.bracket.round2[0].t1=D.bracket.round1[0].w;D.bracket.round2[0].t2=D.bracket.round1[1].w;D.bracket.round2[1].t1=D.bracket.round1[2].w;D.bracket.round2[1].t2=D.bracket.round1[3].w;
+  if(r===1){D.bracket.round2[0].t1=D.bracket.round1[0].w||null;D.bracket.round2[0].t2=D.bracket.round1[1].w||null;D.bracket.round2[1].t1=D.bracket.round1[2].w||null;D.bracket.round2[1].t2=D.bracket.round1[3].w||null;
     D.bracket.round2.forEach(x=>{x.w=null});D.bracket.round3[0].t1=null;D.bracket.round3[0].t2=null;D.bracket.round3[0].w=null}
-  else if(r===2){D.bracket.round3[0].t1=D.bracket.round2[0].w;D.bracket.round3[0].t2=D.bracket.round2[1].w;D.bracket.round3[0].w=null}
+  else if(r===2){D.bracket.round3[0].t1=D.bracket.round2[0].w||null;D.bracket.round3[0].t2=D.bracket.round2[1].w||null;D.bracket.round3[0].w=null}
   saveBracket();save();renderAB();renderBracket()}
 
 function updAdminRound(){D.settings.currentRound=parseInt(document.getElementById('aRnd').value);save();renderAB();renderBracket()}
