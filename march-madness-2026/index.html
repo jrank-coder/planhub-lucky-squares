@@ -498,7 +498,7 @@ const DEF = {
   },
   dailyScores:{},freeThrowLog:[],newsFeed:[],overrides:[],
   settings:{adminPassword:"planhub2026",currentRound:1,madnessMode:false,
-    contestDates:{round1:["2026-03-23","2026-03-24","2026-03-25"],round2:["2026-03-26","2026-03-27"],round3:["2026-03-30","2026-03-31"]}}
+    contestDates:{round1:["2026-03-23","2026-03-24","2026-03-25"],round2:["2026-03-26","2026-03-27"],round3:["2026-03-30","2026-03-31"],bonus:["2026-03-28","2026-03-29"]}}
 };
 let D;
 // Firebase config
@@ -591,7 +591,7 @@ function allP(){const p=[];D.teams.forEach(t=>t.members.forEach(m=>p.push({...m,
 function pTeam(n){for(const t of D.teams)if(t.members.find(m=>m.name===n))return t;return null}
 function pRole(n){for(const t of D.teams){const m=t.members.find(m=>m.name===n);if(m)return m.role}return null}
 function rDates(r){return r===1?D.settings.contestDates.round1:r===2?D.settings.contestDates.round2:r===3?D.settings.contestDates.round3:[]}
-function allDates(){return[...D.settings.contestDates.round1,...D.settings.contestDates.round2,...D.settings.contestDates.round3]}
+function allDates(){return[...D.settings.contestDates.round1,...D.settings.contestDates.round2,...D.settings.contestDates.round3,...(D.settings.contestDates.bonus||[])]}
 function ftMult(){return D.settings.madnessMode?2:1}
 
 // ============ FT LOG AS SOURCE OF TRUTH ============
