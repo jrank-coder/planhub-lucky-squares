@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>planHub Lucky Squares</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg:      #1e2830;
+      --bg2:     #25313e;
+      --panel:   #1c2a36;
+      --mint:    #00b894;
+      --mint2:   #70d7c2;
+      --gold:    #00b894;
+      --gold2:   #009b7d;
+      --green:   #00b894;
+      --red:     #e74c3c;
+      --yellow:  #fdcb6e;
+      --gray:    #525a65;
+      --gray2:   #8a9aaa;
+      --white:   #f5fcfb;
+      --dark:    #25313e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--white);
+      font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── CANVAS ── */
+    #confetti-canvas {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* ── AUTH ── */
+    #auth-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; flex-direction: column;
+    }
+    .auth-card {
+      background: var(--bg2); border: 2px solid var(--mint);
+      border-radius: 18px; padding: 52px 44px;
+      text-align: center; max-width: 400px;
+      box-shadow: 0 0 48px rgba(0,184,148,.2);
+    }
+    .auth-logo  { font-size: 56px; margin-bottom: 14px; }
+    .auth-title { font-size: 32px; font-weight: 800; color: var(--gold); margin-bottom: 6px; }
+    .auth-sub   { color: var(--gray); font-size: 14px; margin-bottom: 32px; }
+    .btn-google {
+      background: #fff; color: #333; border: none;
+      padding: 14px 28px; border-radius: 8px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 10px; margin: 0 auto;
+      transition: transform .1s;
+    }
+    .btn-google:hover { transform: scale(1.03); }
+    .auth-note { font-size: 12px; color: var(--gray); margin-top: 14px; }
+
+    /* ── APP SHELL ── */
+    #app { display: none; flex-direction: column; min-height: 100vh; }
+
+    header {
+      background: var(--bg2); border-bottom: 3px solid var(--mint);
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-logo { display: flex; align-items: center; gap: 12px; }
+    .header-logo img { height: 40px; width: auto; }
+    .header-title { font-size: 20px; font-weight: 700; color: var(--white); line-height: 1.1; }
+    .header-title .brand { color: var(--mint); font-weight: 800; }
+    .header-subtitle { font-size: 10px; color: var(--gray2); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .live-dot {
+      display: inline-block; width: 9px; height: 9px;
+      background: var(--green); border-radius: 50%;
+      animation: pulse 2s infinite; margin-right: 6px;
+    }
+    @keyframes pulse {
+      0%,100%{ opacity:1; transform:scale(1); }
+      50%    { opacity:.5; transform:scale(.8); }
+    }
+    .contest-label { font-size: 13px; color: var(--gray); }
+    .user-info     { font-size: 13px; }
+    .btn-logout {
+      background: none; border: 1px solid var(--gray);
+      color: var(--gray); padding: 4px 10px;
+      border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+
+    /* ── TABS ── */
+    .tab-nav {
+      display: flex; background: var(--bg2);
+      border-bottom: 2px solid rgba(0,184,148,.3); padding: 0 24px;
+    }
+    .nav-tab {
+      padding: 14px 22px; cursor: pointer;
+      font-size: 15px; font-weight: 600; color: var(--gray2);
+      border-bottom: 3px solid transparent; transition: all .2s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .nav-tab:hover  { color: var(--white); }
+    .nav-tab.active { color: var(--mint); border-bottom-color: var(--mint); }
+
+    .tab-content { display: none; flex: 1; padding: 20px; gap: 20px; align-items: flex-start; }
+    .tab-content.active { display: flex; }
+
+    /* ── RULES PANEL ── */
+    .rules-panel {
+      width: 200px; flex-shrink: 0;
+      background: var(--bg2); border: 1px solid rgba(0,184,148,.25);
+      border-radius: 14px; padding: 18px 16px;
+    }
+    .rp-header {
+      font-size: 12px; font-weight: 700; color: var(--mint);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .rp-rule {
+      display: flex; gap: 8px; align-items: flex-start;
+      margin-bottom: 10px; font-size: 12px; line-height: 1.45; color: var(--white);
+    }
+    .rp-rule .rp-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .rp-rule strong { color: var(--mint); }
+    .rp-divider { border: none; border-top: 1px solid rgba(255,255,255,.08); margin: 12px 0; }
+
+    /* ── BOARD MAIN ── */
+    .board-main {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 18px;
+    }
+    .player-greeting { text-align: center; }
+    .player-greeting h2 { font-size: 22px; color: var(--gold); }
+    .picks-badge {
+      display: inline-block; background: var(--panel);
+      border: 2px solid var(--gold); border-radius: 10px;
+      padding: 7px 18px; margin-top: 8px; font-size: 15px;
+    }
+    .picks-badge span { font-size: 22px; font-weight: 800; color: var(--gold); }
+    .sync-note { font-size: 11px; color: var(--gray); margin-top: 4px; }
+
+    .board-empty {
+      color: var(--gray2); font-size: 14px; text-align: center;
+      padding: 60px 20px;
+    }
+
+    /* ── SQUARE GRID ── */
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      width: min(calc(100vw - 600px), calc(100vh - 320px));
+      max-width: 100%;
+    }
+    .sq {
+      aspect-ratio: 1;
+      background: var(--bg2);
+      border: 2px solid rgba(0,184,148,.2);
+      border-radius: 10px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      cursor: default; transition: all .18s;
+      position: relative; overflow: hidden;
+      user-select: none;
+      padding: 4px;
+    }
+    .sq.pickable {
+      cursor: pointer;
+      border-color: var(--mint);
+      box-shadow: 0 0 0 0 rgba(0,184,148,.4);
+    }
+    .sq.pickable:hover {
+      transform: scale(1.07);
+      box-shadow: 0 0 18px rgba(0,184,148,.45);
+      background: #1c3a30;
+    }
+    .sq.claimed-me {
+      background: linear-gradient(135deg, #009b7d, #007a63);
+      border-color: var(--mint2);
+    }
+    .sq.claimed-other {
+      background: #202d38;
+      border-color: rgba(0,184,148,.12);
+    }
+    .sq.claimed-miss {
+      background: rgba(255,255,255,.03);
+      border-color: rgba(255,255,255,.06);
+      opacity: 0.55;
+    }
+    .sq.sq-revealing {
+      border-color: var(--mint) !important;
+      animation: revealPulse .35s ease-in-out infinite alternate;
+      cursor: default !important;
+    }
+    .sq.sq-revealing .sq-qmark {
+      animation: qFlash .35s ease-in-out infinite alternate;
+    }
+    @keyframes revealPulse {
+      from { transform: scale(1);    box-shadow: 0 0 10px rgba(0,184,148,.4); }
+      to   { transform: scale(1.06); box-shadow: 0 0 28px rgba(0,184,148,.85); }
+    }
+    @keyframes qFlash {
+      from { opacity: .3; color: rgba(0,184,148,.4); }
+      to   { opacity: 1;  color: var(--mint); }
+    }
+    .sq.reveal-pop {
+      animation: revealPop .45s ease forwards;
+    }
+    @keyframes revealPop {
+      0%   { transform: scale(1); }
+      35%  { transform: scale(1.22); }
+      65%  { transform: scale(.96); }
+      100% { transform: scale(1); }
+    }
+    .sq-qmark { font-size: 36px; font-weight: 900; color: rgba(0,184,148,.35); line-height: 1; }
+    .sq-prize { font-size: 22px; font-weight: 800; color: var(--white); line-height: 1; }
+    .sq-prize.big { font-size: 28px; }
+    .sq-name  { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 4px; text-align: center; word-break: break-word; line-height: 1.2; }
+    .sq-miss  { font-size: 26px; opacity: .4; }
+
+    .board-stats { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .stat-chip { background: var(--bg2); border: 1px solid #1e3a5f; border-radius: 10px; padding: 12px 18px; text-align: center; }
+    .stat-chip .sv { font-size: 26px; font-weight: 800; color: var(--mint); }
+    .stat-chip .sl { font-size: 11px; color: var(--gray); text-transform: uppercase; margin-top: 2px; }
+
+    /* ── LEADERBOARD ── */
+    .leaderboard { width: 300px; flex-shrink: 0; }
+    .lb-header {
+      font-size: 13px; font-weight: 700; color: var(--mint);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+    }
+    .lb-col-hdr {
+      display: flex; align-items: center; gap: 6px;
+      padding: 0 8px 6px; font-size: 11px;
+      border-bottom: 1px solid rgba(0,184,148,.2); margin-bottom: 6px;
+      color: var(--gray2);
+    }
+    .lb-col-hdr-name { flex: 1; }
+    .lb-col-picks { width: 38px; text-align: right; flex-shrink: 0; }
+    .lb-col-ttl   { width: 50px; text-align: right; flex-shrink: 0; color: var(--mint); font-weight: 700; }
+    .lb-list { display: flex; flex-direction: column; gap: 4px; }
+    .lb-row {
+      background: var(--bg2); border-radius: 8px;
+      padding: 7px 8px; display: flex; align-items: center;
+      gap: 6px; border: 1px solid transparent; transition: border-color .2s;
+    }
+    .lb-row.me     { border-color: var(--mint); }
+    .lb-row.leader { border-color: var(--mint2); }
+    .lb-rank    { font-size: 11px; color: var(--gray2); width: 20px; text-align: right; flex-shrink: 0; }
+    .lb-name    { font-size: 12px; font-weight: 600; }
+    .lb-meta    { font-size: 9px; color: var(--gray2); margin-top: 1px; }
+    .lb-name-col{ flex: 1; min-width: 0; }
+    .lb-picks   { font-size: 11px; font-weight: 700; width: 38px; text-align: right; flex-shrink: 0; color: var(--yellow); }
+    .lb-picks.zero { color: var(--gray2); font-weight: 600; }
+    .lb-ttl { font-size: 12px; font-weight: 800; width: 50px; text-align: right; flex-shrink: 0; color: var(--mint); }
+    .lb-ttl.zero { color: var(--gray2); font-weight: 600; }
+
+    /* ── ADMIN ── */
+    .admin-main { flex: 1; max-width: 580px; }
+    .admin-title { font-size: 20px; font-weight: 700; color: var(--gold); margin-bottom: 20px; }
+    .admin-auth-wrap { max-width: 380px; margin: 40px auto; text-align: center; }
+    .admin-auth-wrap h2 { color: var(--gold); margin-bottom: 12px; }
+    .admin-auth-wrap p  { color: var(--gray); font-size: 14px; margin-bottom: 20px; }
+    .asec { background: var(--bg2); border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
+    .asec h3 { font-size: 13px; text-transform: uppercase; color: var(--gray); letter-spacing: 1px; margin-bottom: 14px; }
+    .asec p { color: var(--gray); font-size: 13px; margin-bottom: 12px; }
+    .afg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .afg label { font-size: 13px; }
+    .ain { background: var(--bg); border: 1px solid #444; color: var(--white); padding: 8px 11px; border-radius: 6px; font-size: 14px; }
+    .ain:focus { outline: none; border-color: var(--gold); }
+    .arow { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .tier-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin-bottom: 12px;
+    }
+    .tier-item { display: flex; flex-direction: column; gap: 4px; }
+    .tier-item label { font-size: 12px; color: var(--gray2); }
+    .tier-total {
+      display: inline-block;
+      font-size: 15px; font-weight: 700;
+      padding: 8px 18px; border-radius: 8px; margin-bottom: 12px;
+      background: var(--bg); border: 2px solid var(--gray);
+      transition: color .2s, border-color .2s;
+    }
+    .tier-total.ok  { color: var(--green); border-color: var(--green); }
+    .tier-total.bad { color: var(--red);   border-color: var(--red);   }
+    .size-btn {
+      padding: 7px 14px; font-size: 13px; font-weight: 600;
+      border: 2px solid var(--gray); border-radius: 7px;
+      background: var(--bg); color: var(--gray2); cursor: pointer;
+      transition: all .15s;
+    }
+    .size-btn:hover  { border-color: var(--mint2); color: var(--white); }
+    .size-btn.active { border-color: var(--mint); color: var(--mint); background: rgba(0,184,148,.1); }
+    .abtn {
+      padding: 10px 18px; font-size: 14px; font-weight: 600;
+      border: none; border-radius: 8px; cursor: pointer; transition: all .15s;
+    }
+    .abtn:hover { transform: translateY(-1px); }
+    .abtn.p { background: var(--mint);   color: var(--dark); font-weight: 700; }
+    .abtn.s { background: #0984e3;       color: #fff; }
+    .abtn.d { background: var(--red);    color: #fff; }
+    .abtn.nd { background: var(--yellow); color: var(--dark); }
+    .admin-msg { font-size: 13px; margin-top: 8px; }
+
+    /* ── TOASTS ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--bg2); border: 1px solid var(--mint);
+      color: var(--white); padding: 11px 18px;
+      border-radius: 10px; font-size: 14px;
+      z-index: 10000; animation: toastIn .3s ease; max-width: 290px;
+    }
+    @keyframes toastIn {
+      from { transform: translateX(110%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+    @keyframes bounceIn {
+      0%  { transform: scale(.3);  opacity: 0; }
+      60% { transform: scale(1.1); }
+      80% { transform: scale(.95); }
+      100%{ transform: scale(1);   opacity: 1; }
+    }
+
+    @media (max-width: 800px) {
+      .leaderboard { display: none; }
+      .board-grid  { grid-template-columns: repeat(5, 1fr); }
+    }
+    @media (max-width: 500px) {
+      .rules-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ═══════════ AUTH ═══════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="logo-mark.png" alt="planHub" style="height:64px;width:auto;margin-bottom:8px" onerror="this.style.display='none'">
+      <div style="font-size:40px;margin-bottom:4px">⬜</div>
+    </div>
+    <div class="auth-title"><span style="color:var(--mint)">planHub</span> Lucky Squares</div>
+    <div class="auth-sub">Sign in with your PlanHub Google account to play</div>
+    <button class="btn-google" onclick="signIn()">
+      <svg width="20" height="20" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <div class="auth-note">@planhub.com accounts only</div>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="app">
+  <header>
+    <div class="header-logo">
+      <img src="logo-mark.png" alt="planHub" onerror="this.style.display='none'">
+      <div>
+        <div class="header-title"><span class="brand">planHub</span> Lucky Squares</div>
+        <div class="header-subtitle">⬜ Sales Contest</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div>
+        <span class="live-dot"></span>
+        <span class="contest-label" id="contest-label">Loading…</span>
+      </div>
+      <div id="header-sync" style="font-size:11px;color:var(--gray2)">Last sync: —</div>
+      <span class="user-info" id="user-display"></span>
+      <button class="btn-logout" onclick="signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <div class="tab-nav">
+    <div class="nav-tab active" data-tab="play"  onclick="switchTab('play')">⬜ Play</div>
+    <div class="nav-tab"        data-tab="admin" onclick="switchTab('admin')">⚙️ Admin</div>
+  </div>
+
+  <!-- ── PLAY TAB ── -->
+  <div id="tab-play" class="tab-content active">
+
+    <!-- Left: Rules -->
+    <div class="rules-panel">
+      <div class="rp-header">⬜ How to Play</div>
+      <div class="rp-rule"><span class="rp-icon">🎯</span><div>Pick any <strong>unrevealed square</strong> to reveal your prize</div></div>
+      <div class="rp-rule"><span class="rp-icon">💰</span><div>Each square hides a <strong>cash prize</strong> (or a miss)</div></div>
+      <div class="rp-rule"><span class="rp-icon">🎲</span><div>Picks bank — claim them <strong>whenever you want</strong></div></div>
+      <hr class="rp-divider">
+      <div class="rp-header" style="margin-top:4px">💼 Earning Picks</div>
+      <div class="rp-rule"><span class="rp-icon">💼</span><div><strong>AEs:</strong> 1 pick per Closed Won deal today</div></div>
+      <div class="rp-rule"><span class="rp-icon">📞</span><div><strong>SDRs:</strong> 1 pick per warm transfer today</div></div>
+      <div class="rp-rule"><span class="rp-icon">🔄</span><div>Picks sync automatically every <strong>30 min</strong></div></div>
+    </div>
+
+    <!-- Center: Board -->
+    <div class="board-main">
+      <div class="player-greeting">
+        <h2 id="board-greeting">Welcome!</h2>
+        <div class="picks-badge" id="picks-badge">Picks Available: <span id="picks-count">0</span></div>
+        <div class="sync-note" id="sync-note"></div>
+      </div>
+
+      <div id="board-container">
+        <div class="board-empty" id="board-empty">
+          Board not yet initialized. Ask the admin to set it up.
+        </div>
+        <div class="board-grid" id="board-grid" style="display:none"></div>
+      </div>
+
+      <div class="board-stats">
+        <div class="stat-chip"><div class="sv" id="st-picks-earned">0</div><div class="sl">Picks Earned</div></div>
+        <div class="stat-chip"><div class="sv" id="st-winnings">$0</div><div class="sl">Total Won</div></div>
+        <div class="stat-chip"><div class="sv" id="st-claimed">0</div><div class="sl">Squares Left</div></div>
+      </div>
+    </div>
+
+    <!-- Right: Leaderboard -->
+    <div class="leaderboard">
+      <div class="lb-header">🏆 Leaderboard</div>
+      <div class="lb-col-hdr">
+        <div class="lb-rank" style="visibility:hidden">1</div>
+        <div class="lb-col-hdr-name">Player</div>
+        <div class="lb-col-picks">Avail</div>
+        <div class="lb-col-ttl">Won</div>
+      </div>
+      <div class="lb-list" id="lb-list"></div>
+    </div>
+  </div>
+
+  <!-- ── ADMIN TAB ── -->
+  <div id="tab-admin" class="tab-content">
+    <!-- Auth wall -->
+    <div class="admin-main" id="admin-auth-wrap">
+      <div class="admin-auth-wrap">
+        <h2>🔐 Admin Access</h2>
+        <p>Enter the admin password to manage the contest.</p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-bottom:10px">
+          <input type="password" class="ain" id="admin-pw" placeholder="Password" style="width:180px"
+                 onkeydown="if(event.key==='Enter')checkPw()">
+          <button class="abtn p" onclick="checkPw()">Enter</button>
+        </div>
+        <div id="pw-err" style="color:var(--red);font-size:13px"></div>
+      </div>
+    </div>
+
+    <!-- Admin panel -->
+    <div class="admin-main" id="admin-panel" style="display:none">
+      <div class="admin-title">⚙️ Admin Panel</div>
+
+      <!-- Board Setup -->
+      <div class="asec">
+        <h3>Board Setup</h3>
+        <div class="afg" style="margin-bottom:14px">
+          <label style="font-size:12px;color:var(--gray2);display:block;margin-bottom:6px">Board Size</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="size-btn" data-size="16" onclick="setBoardSize(16)">4×4 &nbsp;(16)</button>
+            <button class="size-btn" data-size="25" onclick="setBoardSize(25)">5×5 &nbsp;(25)</button>
+            <button class="size-btn" data-size="36" onclick="setBoardSize(36)">6×6 &nbsp;(36)</button>
+            <button class="size-btn" data-size="49" onclick="setBoardSize(49)">7×7 &nbsp;(49)</button>
+          </div>
+        </div>
+        <p id="board-setup-hint">Enter how many squares per prize tier. Total must match the board size.</p>
+        <div class="tier-grid">
+          <div class="tier-item"><label>$100 squares</label><input type="number" class="ain" id="tier-100" min="0" value="0" oninput="updateTierTotal()"></div>
+          <div class="tier-item"><label>$75 squares</label><input type="number" class="ain" id="tier-75"  min="0" value="0" oninput="updateTierTotal()"></div>
+          <div class="tier-item"><label>$50 squares</label><input type="number" class="ain" id="tier-50"  min="0" value="0" oninput="updateTierTotal()"></div>
+          <div class="tier-item"><label>$25 squares</label><input type="number" class="ain" id="tier-25"  min="0" value="0" oninput="updateTierTotal()"></div>
+          <div class="tier-item"><label>$10 squares</label><input type="number" class="ain" id="tier-10"  min="0" value="0" oninput="updateTierTotal()"></div>
+          <div class="tier-item"><label>$0 (miss)</label>  <input type="number" class="ain" id="tier-0"   min="0" value="0" oninput="updateTierTotal()"></div>
+        </div>
+        <div class="tier-total" id="tier-total">Total: 0 / 25</div>
+        <div class="arow">
+          <button class="abtn p" onclick="initBoard()">🎯 Initialize Board</button>
+          <button class="abtn d" onclick="clearBoard()">🗑️ Clear Board</button>
+        </div>
+      </div>
+
+      <!-- Contest Label -->
+      <div class="asec">
+        <h3>Contest Label</h3>
+        <div class="arow">
+          <div class="afg" style="flex:1">
+            <input type="text" class="ain" id="adm-label" placeholder="e.g. April 24, 2026">
+          </div>
+          <button class="abtn p" onclick="saveLabel()" style="margin-bottom:1px">Save</button>
+        </div>
+      </div>
+
+      <!-- Grant Picks -->
+      <div class="asec">
+        <h3>Grant Picks</h3>
+        <div class="arow">
+          <div class="afg" style="flex:1">
+            <label>Player</label>
+            <select class="ain" id="grant-sel" style="width:100%"></select>
+          </div>
+          <div class="afg" style="width:80px">
+            <label>Picks</label>
+            <input type="number" class="ain" id="grant-n" value="1" min="1" max="20">
+          </div>
+          <button class="abtn s" onclick="grantPicks()" style="margin-bottom:1px">Grant</button>
+        </div>
+      </div>
+
+      <!-- New Day -->
+      <div class="asec">
+        <h3>New Day</h3>
+        <p>Resets the HubSpot sync counter so today's closes and transfers earn new picks. Player stats and picks are preserved.</p>
+        <button class="abtn nd" onclick="startNewDay()">🌅 Start New Contest Day</button>
+      </div>
+
+      <!-- Reset Game -->
+      <div class="asec">
+        <h3>Reset Player Data</h3>
+        <p>Clears all player picks and winnings. Board squares are NOT reset — use Clear Board above for that.</p>
+        <button class="abtn d" onclick="resetGame()">🔄 Reset All Player Data</button>
+      </div>
+
+      <!-- Change Password -->
+      <div class="asec">
+        <h3>Change Password</h3>
+        <div class="arow">
+          <div class="afg" style="flex:1"><input type="password" class="ain" id="new-pw" placeholder="New password"></div>
+          <button class="abtn s" onclick="changePassword()" style="margin-bottom:1px">Update</button>
+        </div>
+      </div>
+
+      <div class="admin-msg" id="adm-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// FIREBASE
+// ═══════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyCVfTp-GDRHtdp0Tb6VGiTws9I0OB9RM_k",
+  authDomain: "planhub-sales-internal-tools.firebaseapp.com",
+  databaseURL: "https://planhub-sales-internal-tools-default-rtdb.firebaseio.com",
+  projectId: "planhub-sales-internal-tools",
+  storageBucket: "planhub-sales-internal-tools.firebasestorage.app",
+  messagingSenderId: "95602436947",
+  appId: "1:95602436947:web:575946d6535e7387e8cfa6"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+// ═══════════════════════════════════════════════
+// ROSTER
+// ═══════════════════════════════════════════════
+const ROSTER = {
+  "mfecca@planhub.com":      { name:"Mike Fecca",        id:"629527681",    role:"AE"   },
+  "jglass@planhub.com":      { name:"Jason Glass",       id:"1792198284",   role:"AE"   },
+  "stribble@planhub.com":    { name:"Steven Tribble",    id:"49902523",     role:"AE"   },
+  "kdolan@planhub.com":      { name:"Kristin Dolan",     id:"1391657011",   role:"AE"   },
+  "bsager@planhub.com":      { name:"Ben Sager",         id:"77683167",     role:"AE"   },
+  "kdrew@planhub.com":       { name:"Kelly Drew",        id:"672261556",    role:"AE"   },
+  "cgomez@planhub.com":      { name:"Chris Gomez",       id:"308948531",    role:"AE"   },
+  "rbates@planhub.com":      { name:"Bob Bates",         id:"2123553241",   role:"AE"   },
+  "jdavis@planhub.com":      { name:"Jean Davis",        id:"303944088",    role:"AE"   },
+  "cgardner@planhub.com":    { name:"Connor Gardner",    id:"76001722",     role:"AE"   },
+  "aventresca@planhub.com":  { name:"Anthony Ventresca", id:"86821313",     role:"AE"   },
+  "cjohnson@planhub.com":    { name:"Cherish Johnson",   id:"77683120",     role:"AE"   },
+  "kchesnut@planhub.com":    { name:"Ken Chesnut",       id:"562318206",    role:"AE"   },
+  "fcolon@planhub.com":      { name:"Frank Colon",       id:"1319491554",   role:"AE"   },
+  "jprinssen@planhub.com":   { name:"Julie Prinssen",    id:"51523309",     role:"AE"   },
+  "jmorgan@planhub.com":     { name:"John Morgan",       id:"86821314",     role:"AE"   },
+  "wbest@planhub.com":       { name:"Wendy Best",        id:"43905775",     role:"AE"   },
+  "mfine@planhub.com":       { name:"Mark Fine",         id:"444356199",    role:"AE"   },
+  "mwoods@planhub.com":      { name:"Marcus Woods",      id:"689021749",    role:"SDR"  },
+  "rwolfman@planhub.com":    { name:"Ryan Wolfman",      id:"1876970213",   role:"SDR"  },
+  "kvolp@planhub.com":       { name:"Kyle Volp",         id:"80077717",     role:"SDR"  },
+  "ialvarez@planhub.com":    { name:"Izzy Alvarez",      id:"81910750",     role:"SDR"  },
+  "jbartley@planhub.com":    { name:"James Bartley",     id:"1280205714",   role:"SDR"  },
+  "ksongco@planhub.com":     { name:"Kevin Songco",      id:"80172587",     role:"SDR"  },
+  "nwilliams@planhub.com":   { name:"Nicole Williams",   id:"1283636153",   role:"SDR"  },
+  "nbauscher@planhub.com":   { name:"Nathan Bauscher",   id:"688732035",    role:"SDR"  },
+  "mmccaughey@planhub.com":  { name:"Megan McCaughey",   id:"233549545",    role:"SDR"  },
+  "acarlin@planhub.com":     { name:"Amanda Carlin",     id:"995773165",    role:"SDR"  },
+  "jrank@planhub.com":       { name:"Josh Rank",         id:"826736575",    role:"Demo" },
+  "jmaurer@planhub.com":     { name:"John Maurer",       id:"43905666",     role:"Demo" },
+  "ncappello@planhub.com":   { name:"Nick Cappello",     id:"86626888",     role:"Demo" },
+  "tsmart@planhub.com":      { name:"Tom Smart",         id:"tsmart",       role:"Demo" },
+  "choward@planhub.com":     { name:"Carter Howard",     id:"choward",      role:"Demo" },
+};
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let me          = null;
+let myData      = {};
+let settings    = {};
+let allPlayers  = {};
+let boardState  = {};   // index → { prize, claimed_by, claimed_name, claimed_at }
+let adminAuthed = false;
+let claiming    = false;
+
+// ═══════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════
+function signIn() {
+  const p = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(p).catch(e => toast('Sign-in failed: ' + e.message));
+}
+function signOut() { auth.signOut(); }
+
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    me = null;
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    return;
+  }
+  const email = user.email.toLowerCase();
+  if (!email.endsWith('@planhub.com')) {
+    toast('Only @planhub.com accounts allowed.');
+    auth.signOut(); return;
+  }
+  const roster = ROSTER[email];
+  if (!roster) {
+    document.getElementById('auth-screen').innerHTML = `
+      <div class="auth-card">
+        <div class="auth-logo">⬜</div>
+        <div class="auth-title" style="font-size:20px">Not on the roster</div>
+        <p style="color:var(--gray);margin:14px 0">Contact Josh to be added.</p>
+        <button class="abtn d" onclick="auth.signOut()">Sign Out</button>
+      </div>`;
+    return;
+  }
+  me = { ...roster, email };
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('user-display').textContent = `${me.name} (${me.role})`;
+  initApp();
+});
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+function initApp() {
+  // Bootstrap settings
+  db.ref('planhub_lucky_squares/settings').once('value').then(s => {
+    if (!s.exists()) {
+      db.ref('planhub_lucky_squares/settings').set({
+        adminPassword: 'squares2026',
+        contestLabel:  'planHub Lucky Squares',
+        boardSize:     25
+      });
+    }
+  });
+
+  // Bootstrap own player node
+  db.ref(`planhub_lucky_squares/players/${me.id}`).once('value').then(s => {
+    if (!s.exists()) {
+      db.ref(`planhub_lucky_squares/players/${me.id}`).set({
+        name: me.name, email: me.email, role: me.role,
+        picksAvailable: 0, picksEarned: 0, totalWinnings: 0
+      });
+    } else {
+      db.ref(`planhub_lucky_squares/players/${me.id}`).update({ name: me.name, email: me.email, role: me.role });
+    }
+  });
+
+  // Live: own data
+  db.ref(`planhub_lucky_squares/players/${me.id}`).on('value', s => {
+    myData = s.val() || {};
+    refreshUI();
+  });
+
+  // Live: all players → leaderboard
+  db.ref('planhub_lucky_squares/players').on('value', s => {
+    allPlayers = s.val() || {};
+    renderLeaderboard();
+  });
+
+  // Live: settings
+  db.ref('planhub_lucky_squares/settings').on('value', s => {
+    settings = s.val() || {};
+    document.getElementById('contest-label').textContent = settings.contestLabel || 'planHub Lucky Squares';
+    syncAdminUI();
+  });
+
+  // Live: board
+  db.ref('planhub_lucky_squares/board').on('value', s => {
+    const val = s.val();
+    boardState = val ? Object.fromEntries(Object.entries(val).map(([k,v]) => [parseInt(k), v])) : {};
+    renderBoard();
+    refreshUI();
+  });
+
+  // Last sync
+  db.ref('planhub_lucky_squares/lastSync').on('value', s => {
+    const v = s.val();
+    const el   = document.getElementById('header-sync');
+    const note = document.getElementById('sync-note');
+    if (v) {
+      const d = new Date(v);
+      const fmt = d.toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true
+      });
+      const txt = `Last sync: ${fmt} ET`;
+      el.textContent   = txt;
+      note.textContent = txt;
+    } else {
+      el.textContent   = 'Last sync: —';
+      note.textContent = 'Not yet synced';
+    }
+  });
+
+  populateGrantSelect();
+}
+
+// ═══════════════════════════════════════════════
+// UI REFRESH
+// ═══════════════════════════════════════════════
+function refreshUI() {
+  const d      = myData;
+  const isDemo = me.role === 'Demo';
+
+  document.getElementById('board-greeting').textContent = `Hey, ${me.name}! ⬜`;
+  document.getElementById('st-picks-earned').textContent = d.picksEarned || 0;
+  document.getElementById('st-winnings').textContent     = '$' + (d.totalWinnings || 0);
+
+  // Squares left count
+  const boardSize    = settings.boardSize || 25;
+  const claimedCount = Object.values(boardState).filter(sq => sq && sq.claimed_by).length;
+  document.getElementById('st-claimed').textContent = Math.max(0, boardSize - claimedCount);
+
+  const badge = document.getElementById('picks-badge');
+  if (isDemo) {
+    badge.innerHTML = '👁️ Demo Mode — picks reset, board is live';
+  } else {
+    badge.innerHTML = `Picks Available: <span id="picks-count">${d.picksAvailable || 0}</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// BOARD RENDER
+// ═══════════════════════════════════════════════
+function renderBoard() {
+  const boardSize  = settings.boardSize || 25;
+  const hasBoard   = Object.keys(boardState).length > 0;
+  const emptyEl    = document.getElementById('board-empty');
+  const gridEl     = document.getElementById('board-grid');
+
+  if (!hasBoard) {
+    emptyEl.style.display = 'block';
+    gridEl.style.display  = 'none';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  gridEl.style.display  = 'grid';
+
+  const isDemo     = me.role === 'Demo';
+  const hasPicks   = isDemo || (myData.picksAvailable || 0) > 0;
+
+  // Set grid columns based on board size (default 5 wide)
+  const cols = Math.ceil(Math.sqrt(boardSize));
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+  gridEl.innerHTML = '';
+  for (let i = 0; i < boardSize; i++) {
+    const sq        = boardState[i] || null;
+    const claimed   = sq && sq.claimed_by;
+    const isMe      = claimed && sq.claimed_by === me.id;
+    const prize     = sq ? (sq.prize || 0) : null;
+    const isMiss    = claimed && prize === 0;
+
+    let cls = 'sq';
+    let inner = '';
+
+    if (!claimed) {
+      if (hasPicks) { cls += ' pickable'; }
+      inner = `<div class="sq-qmark">?</div>`;
+    } else if (isMe) {
+      cls += isMiss ? ' claimed-miss' : ' claimed-me';
+      const myShort = me.name.split(' ')[0];
+      inner = isMiss
+        ? `<div class="sq-miss">✗</div><div class="sq-name">${myShort}</div>`
+        : `<div class="sq-prize${prize >= 100 ? ' big' : ''}">$${prize}</div><div class="sq-name">${myShort}</div>`;
+    } else {
+      cls += isMiss ? ' claimed-miss' : ' claimed-other';
+      const shortName = sq.claimed_name ? sq.claimed_name.split(' ')[0] : '?';
+      inner = isMiss
+        ? `<div class="sq-miss">✗</div><div class="sq-name">${shortName}</div>`
+        : `<div class="sq-prize">$${prize}</div><div class="sq-name">${shortName}</div>`;
+    }
+
+    const onclick = (!claimed && hasPicks) ? `onclick="claimSquare(${i})"` : '';
+    gridEl.innerHTML += `<div class="${cls}" id="sq-${i}" ${onclick}>${inner}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// CLAIM A SQUARE
+// ═══════════════════════════════════════════════
+async function claimSquare(idx) {
+  if (claiming) return;
+  const isDemo = me.role === 'Demo';
+  if (!isDemo && (myData.picksAvailable || 0) <= 0) { toast('No picks available!'); return; }
+
+  const sq = boardState[idx];
+  if (!sq) { return; }
+  if (sq.claimed_by) { toast('Already claimed!'); return; }
+
+  claiming = true;
+
+  // Start drumroll + pulsing square immediately
+  const el = document.getElementById(`sq-${idx}`);
+  if (el) {
+    el.className = 'sq sq-revealing';
+    el.innerHTML = `<div class="sq-qmark">?</div>`;
+  }
+  playSound('drumroll');
+
+  const DRUMROLL_MS = 2000;
+
+  const firstName = me.name.split(' ')[0];
+  function doReveal(prize, isWin) {
+    if (!el) return;
+    el.className = 'sq ' + (isWin ? 'claimed-me' : 'claimed-miss') + ' reveal-pop';
+    if (isWin) {
+      el.innerHTML = `<div class="sq-prize${prize >= 100 ? ' big' : ''}">$${prize}</div><div class="sq-name">${firstName}</div>`;
+      playSound('cheers');
+      launchConfetti();
+      toast(isDemo ? `🎉 $${prize}! (Demo — resets in 3s)` : `🎉 $${prize}! Nice one!`);
+    } else {
+      el.innerHTML = `<div class="sq-miss">✗</div><div class="sq-name">${firstName}</div>`;
+      playSound('sigh');
+      setTimeout(() => playSound('womp'), 650);
+      toast(isDemo ? '✗ Miss (Demo — resets in 3s)' : '✗ Miss — better luck next time!');
+    }
+  }
+
+  // Demo path — no Firebase write, auto-reset after reveal
+  if (isDemo) {
+    await new Promise(r => setTimeout(r, DRUMROLL_MS));
+    const prize = sq.prize || 0;
+    doReveal(prize, prize > 0);
+    setTimeout(() => renderBoard(), 3500);
+    claiming = false;
+    return;
+  }
+
+  // Live path — run drumroll and Firebase transaction in parallel
+  try {
+    const [, result] = await Promise.all([
+      new Promise(r => setTimeout(r, DRUMROLL_MS)),
+      db.ref(`planhub_lucky_squares/board/${idx}`).transaction(current => {
+        if (!current || current.claimed_by) return;
+        return { ...current, claimed_by: me.id, claimed_name: me.name, claimed_at: Date.now() };
+      })
+    ]);
+
+    if (!result.committed) {
+      if (el) { el.className = 'sq'; el.innerHTML = `<div class="sq-qmark">?</div>`; }
+      renderBoard();
+      toast('Someone else got that one — pick again!');
+      claiming = false;
+      return;
+    }
+
+    const prize = result.snapshot.val().prize || 0;
+    doReveal(prize, prize > 0);
+
+    const pid = me.id;
+    const upd = {};
+    upd[`planhub_lucky_squares/players/${pid}/picksAvailable`] = firebase.database.ServerValue.increment(-1);
+    upd[`planhub_lucky_squares/players/${pid}/totalWinnings`]  = firebase.database.ServerValue.increment(prize);
+    await db.ref().update(upd);
+    db.ref(`planhub_lucky_squares/players/${pid}/pickLog`).push({ ts: Date.now(), squareIndex: idx, prize });
+
+  } catch(e) {
+    if (el) renderBoard();
+    toast('Error claiming square. Try again.');
+    console.error(e);
+  }
+
+  claiming = false;
+}
+
+// ═══════════════════════════════════════════════
+// LEADERBOARD
+// ═══════════════════════════════════════════════
+function renderLeaderboard() {
+  const demoIds = new Set(Object.values(ROSTER).filter(r => r.role === 'Demo' || r.role === 'Admin').map(r => r.id));
+  const rows = Object.entries(allPlayers)
+    .filter(([id, p]) => p && !demoIds.has(id) && p.role !== 'Demo' && p.role !== 'Admin' &&
+      ((p.picksEarned || 0) > 0 || (p.totalWinnings || 0) > 0))
+    .map(([id, p]) => ({ ...p, _id: id }))
+    .sort((a, b) => (b.totalWinnings || 0) - (a.totalWinnings || 0));
+
+  const html = rows.map((p, i) => {
+    const isMe     = me && p.email === me.email;
+    const isLeader = i === 0 && (p.totalWinnings || 0) > 0;
+    const total    = p.totalWinnings || 0;
+    const avail    = p.picksAvailable || 0;
+    return `<div class="lb-row ${isMe ? 'me' : ''} ${isLeader ? 'leader' : ''}">
+      <div class="lb-rank">${isLeader ? '👑' : i + 1}</div>
+      <div class="lb-name-col">
+        <div class="lb-name">${p.name}${isMe ? ' <span style="color:var(--mint);font-size:10px">(you)</span>' : ''}</div>
+        <div class="lb-meta">${p.role || ''}</div>
+      </div>
+      <div class="lb-picks ${avail === 0 ? 'zero' : ''}">${avail}</div>
+      <div class="lb-ttl ${total === 0 ? 'zero' : ''}">$${total}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('lb-list').innerHTML = html ||
+    '<div style="color:var(--gray2);font-size:12px;text-align:center;padding:16px">No activity yet</div>';
+}
+
+// ═══════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════
+function checkPw() {
+  const input  = document.getElementById('admin-pw').value;
+  const stored = settings.adminPassword || 'squares2026';
+  if (input === stored) {
+    adminAuthed = true;
+    document.getElementById('admin-auth-wrap').style.display = 'none';
+    document.getElementById('admin-panel').style.display     = 'block';
+    syncAdminUI();
+  } else {
+    const err = document.getElementById('pw-err');
+    err.textContent = 'Incorrect password.';
+    setTimeout(() => err.textContent = '', 2200);
+  }
+}
+
+function syncAdminUI() {
+  if (!adminAuthed) return;
+  setVal('adm-label', settings.contestLabel || '');
+  updateSizeBtns();
+  updateTierTotal();
+}
+
+function setBoardSize(n) {
+  settings.boardSize = n;
+  updateSizeBtns();
+  updateTierTotal();
+  db.ref('planhub_lucky_squares/settings/boardSize').set(n);
+}
+
+function updateSizeBtns() {
+  const target = settings.boardSize || 25;
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.size) === target);
+  });
+  const side = Math.round(Math.sqrt(target));
+  const hint = document.getElementById('board-setup-hint');
+  if (hint) hint.textContent = `Enter how many squares per prize tier. Total must equal ${target} for a ${side}×${side} board.`;
+}
+
+function updateTierTotal() {
+  const tiers  = [100, 75, 50, 25, 10, 0];
+  const total  = tiers.reduce((sum, t) => sum + (parseInt(document.getElementById(`tier-${t}`).value) || 0), 0);
+  const target = settings.boardSize || 25;
+  const el     = document.getElementById('tier-total');
+  el.textContent = `${total} / ${target} squares`;
+  el.className   = 'tier-total ' + (total === target ? 'ok' : 'bad');
+  updateSizeBtns();
+}
+
+function initBoard() {
+  const tiers  = [100, 75, 50, 25, 10, 0];
+  const prizes = [];
+  for (const t of tiers) {
+    const n = parseInt(document.getElementById(`tier-${t}`).value) || 0;
+    for (let i = 0; i < n; i++) prizes.push(t);
+  }
+  const target = settings.boardSize || 25;
+  if (prizes.length !== target) {
+    toast(`⚠️ Total must equal ${target}. You have ${prizes.length}.`); return;
+  }
+
+  // Fisher-Yates shuffle
+  for (let i = prizes.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [prizes[i], prizes[j]] = [prizes[j], prizes[i]];
+  }
+
+  const upd = { 'planhub_lucky_squares/pickSyncHWM': null };
+  prizes.forEach((prize, i) => {
+    upd[`planhub_lucky_squares/board/${i}`] = { prize, claimed_by: null, claimed_name: null, claimed_at: null };
+  });
+  db.ref().update(upd)
+    .then(() => { toast('✅ Board initialized! Switching to Play tab…'); setTimeout(() => switchTab('play'), 800); })
+    .catch(e => toast('Firebase write failed: ' + e.message));
+}
+
+function clearBoard() {
+  db.ref('planhub_lucky_squares/board').remove()
+    .then(() => admMsg('Board cleared.'))
+    .catch(e => toast('Firebase write failed: ' + e.message));
+}
+
+function saveLabel() {
+  const label = document.getElementById('adm-label').value || 'planHub Lucky Squares';
+  db.ref('planhub_lucky_squares/settings/contestLabel').set(label);
+  admMsg('Label saved.');
+}
+
+function grantPicks() {
+  const sel = document.getElementById('grant-sel');
+  const n   = parseInt(document.getElementById('grant-n').value) || 1;
+  const pid = sel.value;
+  if (!pid) { admMsg('Select a player.', true); return; }
+  db.ref(`planhub_lucky_squares/players/${pid}/picksAvailable`).transaction(v => (v || 0) + n);
+  db.ref(`planhub_lucky_squares/players/${pid}/picksEarned`).transaction(v => (v || 0) + n);
+  admMsg(`Granted ${n} pick(s) to ${sel.options[sel.selectedIndex].text}`);
+}
+
+function startNewDay() {
+  if (!confirm('Start a new contest day?\n\nSync counter resets — today\'s closes and transfers will earn new picks.\nPlayer stats and picks are preserved.')) return;
+  const today  = new Date();
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const mo = months[today.getMonth()], dd = today.getDate(), yr = today.getFullYear();
+  const existing = (settings.contestLabel || '').trim();
+  const m = existing.match(/^(\w+)\s+(\d+)[\s\-–&,\d]*,\s*(\d{4})$/);
+  const newLabel = (m && m[1] === mo && parseInt(m[3]) === yr)
+    ? `${mo} ${m[2]}-${dd}, ${yr}`
+    : (existing ? `${existing} & ${mo} ${dd}` : `${mo} ${dd}, ${yr}`);
+  db.ref().update({
+    'planhub_lucky_squares/pickSyncHWM': null,
+    'planhub_lucky_squares/settings/contestLabel': newLabel
+  }).then(() => {
+    document.getElementById('adm-label').value = newLabel;
+    admMsg(`New day started. Label → "${newLabel}"`);
+  });
+}
+
+function resetGame() {
+  if (!confirm('Reset ALL player picks and winnings? Board squares are NOT cleared.\nThis cannot be undone.')) return;
+  db.ref('planhub_lucky_squares/players').once('value').then(s => {
+    const pids = Object.keys(s.val() || {});
+    const upd  = {};
+    const zero = { picksAvailable:0, picksEarned:0, totalWinnings:0, pickLog:null };
+    pids.forEach(pid => Object.entries(zero).forEach(([k, v]) => {
+      upd[`planhub_lucky_squares/players/${pid}/${k}`] = v;
+    }));
+    upd['planhub_lucky_squares/pickSyncHWM'] = null;
+    db.ref().update(upd);
+    admMsg('Player data reset.');
+  });
+}
+
+function changePassword() {
+  const pw = document.getElementById('new-pw').value;
+  if (!pw || pw.length < 4) { admMsg('Min 4 characters.', true); return; }
+  db.ref('planhub_lucky_squares/settings/adminPassword').set(pw);
+  document.getElementById('new-pw').value = '';
+  admMsg('Password updated.');
+}
+
+function populateGrantSelect() {
+  const opts = Object.values(ROSTER)
+    .filter(p => p.role === 'AE' || p.role === 'SDR')
+    .filter((p, i, a) => a.findIndex(x => x.id === p.id) === i)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(p => `<option value="${p.id}">${p.name} (${p.role})</option>`).join('');
+  document.getElementById('grant-sel').innerHTML = opts;
+}
+
+function admMsg(txt, err = false) {
+  const el = document.getElementById('adm-msg');
+  el.textContent  = txt;
+  el.style.color  = err ? 'var(--red)' : 'var(--green)';
+  setTimeout(() => el.textContent = '', 3500);
+}
+
+// ═══════════════════════════════════════════════
+// CONFETTI
+// ═══════════════════════════════════════════════
+let confettiFrame;
+function launchConfetti() {
+  const cv  = document.getElementById('confetti-canvas');
+  const ctx = cv.getContext('2d');
+  cv.width  = window.innerWidth;
+  cv.height = window.innerHeight;
+  const COLORS = ['#00b894','#70d7c2','#c2eee5','#fdcb6e','#0984e3','#e17055','#fff'];
+  const pts = Array.from({ length: 120 }, () => ({
+    x: Math.random() * cv.width, y: Math.random() * -cv.height * 1.2,
+    w: Math.random() * 10 + 5,   h: Math.random() * 5 + 3,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    r: Math.random() * Math.PI * 2, rot: (Math.random() - .5) * .3,
+    vx: (Math.random() - .5) * 3,   vy: Math.random() * 4 + 2.5,
+  }));
+  let t = 0;
+  if (confettiFrame) cancelAnimationFrame(confettiFrame);
+  function draw() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    t++;
+    let alive = false;
+    pts.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.r += p.rot;
+      if (p.y < cv.height + 20) alive = true;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    if (alive && t < 320) confettiFrame = requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, cv.width, cv.height);
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════════
+const _ac = () => { if (!window._audioCtx) window._audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return window._audioCtx; };
+
+function playSound(name) {
+  try {
+    const ctx = _ac();
+    if (name === 'cheers')   _playCheers(ctx);
+    if (name === 'sigh')     _playSigh(ctx);
+    if (name === 'womp')     _playWomp(ctx);
+    if (name === 'drumroll') _playDrumroll(ctx);
+  } catch(e) {}
+}
+function _playCheers(ctx) {
+  const dur = 2.5, buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(i / d.length * Math.PI);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp  = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 0.8;
+  const gain = ctx.createGain(); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 0.1); gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + dur);
+  src.connect(bp); bp.connect(gain); gain.connect(ctx.destination);
+  src.start(); src.stop(ctx.currentTime + dur);
+  [0, 0.15, 0.3].forEach((delay, i) => {
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.frequency.value = 880 + i * 220; osc.type = 'sine';
+    g.gain.setValueAtTime(0.18, ctx.currentTime + delay); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.3);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.35);
+  });
+}
+function _playSigh(ctx) {
+  const osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.type = 'sawtooth'; osc.frequency.setValueAtTime(320, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 1.2);
+  g.gain.setValueAtTime(0.22, ctx.currentTime); g.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.2);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600;
+  osc.connect(lp); lp.connect(g); g.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 1.3);
+}
+function _playWomp(ctx) {
+  [[0, 440, 220], [0.55, 370, 185]].forEach(([delay, f1, f2]) => {
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(f1, ctx.currentTime + delay); osc.frequency.exponentialRampToValueAtTime(f2, ctx.currentTime + delay + 0.5);
+    g.gain.setValueAtTime(0.3, ctx.currentTime + delay); g.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + 0.55);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    osc.connect(lp); lp.connect(g); g.connect(ctx.destination);
+    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.6);
+  });
+}
+function _playDrumroll(ctx) {
+  const hits     = 38;
+  const duration = 1.85;
+  for (let i = 0; i < hits; i++) {
+    // Accelerating: hits start sparse, pack tightly at the end
+    const progress = i / hits;
+    const t = ctx.currentTime + duration * Math.pow(progress, 1.6);
+    const hitLen = 0.045 + (1 - progress) * 0.03; // longer early hits, snappier at end
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * hitLen), ctx.sampleRate);
+    const d   = buf.getChannelData(0);
+    for (let j = 0; j < d.length; j++) d[j] = Math.random() * 2 - 1;
+    const src  = ctx.createBufferSource(); src.buffer = buf;
+    const hp   = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800 + progress * 600;
+    const vol  = 0.1 + progress * 0.28; // rises from quiet to loud
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + hitLen);
+    src.connect(hp); hp.connect(gain); gain.connect(ctx.destination);
+    src.start(t); src.stop(t + hitLen + 0.01);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className   = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+</script>
+</body>
+</html>
