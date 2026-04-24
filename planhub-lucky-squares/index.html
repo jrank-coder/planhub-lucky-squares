@@ -486,10 +486,15 @@
           <div class="tier-item"><label>$0 (miss)</label>  <input type="number" class="ain" id="tier-0"   min="0" value="0" oninput="updateTierTotal()"></div>
         </div>
         <div class="tier-total" id="tier-total">Total: 0 / 25</div>
+        <div id="saved-spiff" style="display:none;font-size:12px;color:var(--gray2);margin-top:4px;margin-bottom:2px"></div>
         <div class="arow">
-          <button class="abtn p" onclick="initBoard()">🎯 Initialize Board</button>
-          <button class="abtn d" onclick="clearBoard()">🗑️ Clear Board</button>
+          <button class="abtn p" onclick="initBoard()">🎯 Initialize Board (full reset)</button>
+          <button class="abtn d" onclick="clearBoard()">🗑️ Clear Board Only</button>
         </div>
+        <p style="font-size:11px;color:var(--gray2);margin-top:8px;margin-bottom:0">
+          <strong>Initialize Board</strong> — shuffles new squares, saves tier config, clears the sync counter. Use this at contest start.<br>
+          <strong>Clear Board Only</strong> — removes squares from the board; does not reset the sync counter or player stats.
+        </p>
       </div>
 
       <!-- Contest Label -->
@@ -963,8 +968,25 @@ function checkPw() {
 function syncAdminUI() {
   if (!adminAuthed) return;
   setVal('adm-label', settings.contestLabel || '');
+  // Restore saved tier distribution
+  if (settings.tierConfig) {
+    [100, 75, 50, 25, 10, 0].forEach(t => {
+      const el = document.getElementById(`tier-${t}`);
+      if (el) el.value = settings.tierConfig[t] || 0;
+    });
+  }
   updateSizeBtns();
   updateTierTotal();
+  // Show saved SPIFF total from last initialization
+  const savedEl = document.getElementById('saved-spiff');
+  if (savedEl) {
+    if (settings.totalSpiff != null) {
+      savedEl.textContent = `Last initialized board: $${settings.totalSpiff.toLocaleString()} total SPIFF`;
+      savedEl.style.display = 'block';
+    } else {
+      savedEl.style.display = 'none';
+    }
+  }
 }
 
 function setBoardSize(n) {
@@ -985,20 +1007,29 @@ function updateSizeBtns() {
 }
 
 function updateTierTotal() {
-  const tiers  = [100, 75, 50, 25, 10, 0];
-  const total  = tiers.reduce((sum, t) => sum + (parseInt(document.getElementById(`tier-${t}`).value) || 0), 0);
+  const tiers = [100, 75, 50, 25, 10, 0];
+  let sqTotal = 0, spiffTotal = 0;
+  for (const t of tiers) {
+    const n = parseInt(document.getElementById(`tier-${t}`).value) || 0;
+    sqTotal   += n;
+    spiffTotal += t * n;
+  }
   const target = settings.boardSize || 25;
   const el     = document.getElementById('tier-total');
-  el.textContent = `${total} / ${target} squares`;
-  el.className   = 'tier-total ' + (total === target ? 'ok' : 'bad');
+  el.textContent = `${sqTotal} / ${target} squares  ·  $${spiffTotal.toLocaleString()} total SPIFF`;
+  el.className   = 'tier-total ' + (sqTotal === target ? 'ok' : 'bad');
   updateSizeBtns();
 }
 
 function initBoard() {
-  const tiers  = [100, 75, 50, 25, 10, 0];
-  const prizes = [];
+  const tiers      = [100, 75, 50, 25, 10, 0];
+  const prizes     = [];
+  const tierConfig = {};
+  let   totalSpiff = 0;
   for (const t of tiers) {
     const n = parseInt(document.getElementById(`tier-${t}`).value) || 0;
+    tierConfig[t]  = n;
+    totalSpiff    += t * n;
     for (let i = 0; i < n; i++) prizes.push(t);
   }
   const target = settings.boardSize || 25;
@@ -1012,7 +1043,11 @@ function initBoard() {
     [prizes[i], prizes[j]] = [prizes[j], prizes[i]];
   }
 
-  const upd = { 'planhub_lucky_squares/pickSyncHWM': null };
+  const upd = {
+    'planhub_lucky_squares/pickSyncHWM': null,
+    'planhub_lucky_squares/settings/tierConfig': tierConfig,
+    'planhub_lucky_squares/settings/totalSpiff': totalSpiff
+  };
   prizes.forEach((prize, i) => {
     upd[`planhub_lucky_squares/board/${i}`] = { prize, claimed_by: null, claimed_name: null, claimed_at: null };
   });
