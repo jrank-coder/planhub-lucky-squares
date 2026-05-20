@@ -405,7 +405,6 @@
       <hr class="rp-divider">
       <div class="rp-header" style="margin-top:4px">💼 Earning Picks</div>
       <div class="rp-rule"><span class="rp-icon">💼</span><div><strong>AEs:</strong> 1 pick per Closed Won deal today</div></div>
-      <div class="rp-rule"><span class="rp-icon">📞</span><div><strong>SDRs:</strong> 1 pick per warm transfer today</div></div>
       <div class="rp-rule"><span class="rp-icon">🔄</span><div>Picks sync automatically every <strong>30 min</strong></div></div>
     </div>
 
@@ -591,16 +590,6 @@ const ROSTER = {
   "jmorgan@planhub.com":     { name:"John Morgan",       id:"86821314",     role:"AE"   },
   "wbest@planhub.com":       { name:"Wendy Best",        id:"43905775",     role:"AE"   },
   "mfine@planhub.com":       { name:"Mark Fine",         id:"444356199",    role:"AE"   },
-  "mwoods@planhub.com":      { name:"Marcus Woods",      id:"689021749",    role:"SDR"  },
-  "rwolfman@planhub.com":    { name:"Ryan Wolfman",      id:"1876970213",   role:"SDR"  },
-  "kvolp@planhub.com":       { name:"Kyle Volp",         id:"80077717",     role:"SDR"  },
-  "ialvarez@planhub.com":    { name:"Izzy Alvarez",      id:"81910750",     role:"SDR"  },
-  "jbartley@planhub.com":    { name:"James Bartley",     id:"1280205714",   role:"SDR"  },
-  "ksongco@planhub.com":     { name:"Kevin Songco",      id:"80172587",     role:"SDR"  },
-  "nwilliams@planhub.com":   { name:"Nicole Williams",   id:"1283636153",   role:"SDR"  },
-  "nbauscher@planhub.com":   { name:"Nathan Bauscher",   id:"688732035",    role:"SDR"  },
-  "mmccaughey@planhub.com":  { name:"Megan McCaughey",   id:"233549545",    role:"SDR"  },
-  "acarlin@planhub.com":     { name:"Amanda Carlin",     id:"995773165",    role:"SDR"  },
   "jrank@planhub.com":       { name:"Josh Rank",         id:"826736575",    role:"Demo" },
   "jmaurer@planhub.com":     { name:"John Maurer",       id:"43905666",     role:"Demo" },
   "ncappello@planhub.com":   { name:"Nick Cappello",     id:"86626888",     role:"Demo" },
@@ -1122,7 +1111,7 @@ function changePassword() {
 
 function populateGrantSelect() {
   const opts = Object.values(ROSTER)
-    .filter(p => p.role === 'AE' || p.role === 'SDR')
+    .filter(p => p.role === 'AE')
     .filter((p, i, a) => a.findIndex(x => x.id === p.id) === i)
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(p => `<option value="${p.id}">${p.name} (${p.role})</option>`).join('');
