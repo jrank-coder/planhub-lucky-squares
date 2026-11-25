@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>planHub Lucky Squares</title>
+  <title>planHub Lucky Squares - Thanksgiving</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
@@ -14,20 +14,20 @@
 
   <style>
     :root {
-      --bg:      #1e2830;
-      --bg2:     #25313e;
-      --panel:   #1c2a36;
-      --mint:    #00b894;
-      --mint2:   #70d7c2;
-      --gold:    #00b894;
-      --gold2:   #009b7d;
-      --green:   #00b894;
+      --bg:      #24180f;
+      --bg2:     #36241a;
+      --panel:   #2c1d14;
+      --mint:    #e67e22;
+      --mint2:   #f5b041;
+      --gold:    #f39c12;
+      --gold2:   #ca6f1e;
+      --green:   #9ab83c;
       --red:     #e74c3c;
       --yellow:  #fdcb6e;
-      --gray:    #525a65;
-      --gray2:   #8a9aaa;
-      --white:   #f5fcfb;
-      --dark:    #25313e;
+      --gray:    #8a7565;
+      --gray2:   #c0a890;
+      --white:   #fdf6ec;
+      --dark:    #36241a;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -52,7 +52,7 @@
       background: var(--bg2); border: 2px solid var(--mint);
       border-radius: 18px; padding: 52px 44px;
       text-align: center; max-width: 400px;
-      box-shadow: 0 0 48px rgba(0,184,148,.2);
+      box-shadow: 0 0 48px rgba(230,126,34,.2);
     }
     .auth-logo  { font-size: 56px; margin-bottom: 14px; }
     .auth-title { font-size: 32px; font-weight: 800; color: var(--gold); margin-bottom: 6px; }
@@ -101,7 +101,7 @@
     /* ── TABS ── */
     .tab-nav {
       display: flex; background: var(--bg2);
-      border-bottom: 2px solid rgba(0,184,148,.3); padding: 0 24px;
+      border-bottom: 2px solid rgba(230,126,34,.3); padding: 0 24px;
     }
     .nav-tab {
       padding: 14px 22px; cursor: pointer;
@@ -118,7 +118,7 @@
     /* ── RULES PANEL ── */
     .rules-panel {
       width: 200px; flex-shrink: 0;
-      background: var(--bg2); border: 1px solid rgba(0,184,148,.25);
+      background: var(--bg2); border: 1px solid rgba(230,126,34,.25);
       border-radius: 14px; padding: 18px 16px;
     }
     .rp-header {
@@ -165,7 +165,7 @@
     .sq {
       aspect-ratio: 1;
       background: var(--bg2);
-      border: 2px solid rgba(0,184,148,.2);
+      border: 2px solid rgba(230,126,34,.2);
       border-radius: 10px;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
@@ -177,20 +177,20 @@
     .sq.pickable {
       cursor: pointer;
       border-color: var(--mint);
-      box-shadow: 0 0 0 0 rgba(0,184,148,.4);
+      box-shadow: 0 0 0 0 rgba(230,126,34,.4);
     }
     .sq.pickable:hover {
       transform: scale(1.07);
-      box-shadow: 0 0 18px rgba(0,184,148,.45);
-      background: #1c3a30;
+      box-shadow: 0 0 18px rgba(230,126,34,.45);
+      background: #4a2e1c;
     }
     .sq.claimed-me {
-      background: linear-gradient(135deg, #009b7d, #007a63);
+      background: linear-gradient(135deg, #ca6f1e, #9c4a12);
       border-color: var(--mint2);
     }
     .sq.claimed-other {
-      background: #202d38;
-      border-color: rgba(0,184,148,.12);
+      background: #2e1f16;
+      border-color: rgba(230,126,34,.12);
     }
     .sq.claimed-miss {
       background: rgba(255,255,255,.03);
@@ -206,11 +206,11 @@
       animation: qFlash .35s ease-in-out infinite alternate;
     }
     @keyframes revealPulse {
-      from { transform: scale(1);    box-shadow: 0 0 10px rgba(0,184,148,.4); }
-      to   { transform: scale(1.06); box-shadow: 0 0 28px rgba(0,184,148,.85); }
+      from { transform: scale(1);    box-shadow: 0 0 10px rgba(230,126,34,.4); }
+      to   { transform: scale(1.06); box-shadow: 0 0 28px rgba(230,126,34,.85); }
     }
     @keyframes qFlash {
-      from { opacity: .3; color: rgba(0,184,148,.4); }
+      from { opacity: .3; color: rgba(230,126,34,.4); }
       to   { opacity: 1;  color: var(--mint); }
     }
     .sq.reveal-pop {
@@ -222,14 +222,15 @@
       65%  { transform: scale(.96); }
       100% { transform: scale(1); }
     }
-    .sq-qmark { font-size: 36px; font-weight: 900; color: rgba(0,184,148,.35); line-height: 1; }
+    .sq-qmark { font-size: 36px; font-weight: 900; color: rgba(230,126,34,.35); line-height: 1; opacity: .8; }
+    .sq.pickable:hover .sq-qmark { opacity: 1; }
     .sq-prize { font-size: 22px; font-weight: 800; color: var(--white); line-height: 1; }
     .sq-prize.big { font-size: 28px; }
     .sq-name  { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 4px; text-align: center; word-break: break-word; line-height: 1.2; }
     .sq-miss  { font-size: 26px; opacity: .4; }
 
     .board-stats { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
-    .stat-chip { background: var(--bg2); border: 1px solid #1e3a5f; border-radius: 10px; padding: 12px 18px; text-align: center; }
+    .stat-chip { background: var(--bg2); border: 1px solid #5a3a24; border-radius: 10px; padding: 12px 18px; text-align: center; }
     .stat-chip .sv { font-size: 26px; font-weight: 800; color: var(--mint); }
     .stat-chip .sl { font-size: 11px; color: var(--gray); text-transform: uppercase; margin-top: 2px; }
 
@@ -242,7 +243,7 @@
     .lb-col-hdr {
       display: flex; align-items: center; gap: 6px;
       padding: 0 8px 6px; font-size: 11px;
-      border-bottom: 1px solid rgba(0,184,148,.2); margin-bottom: 6px;
+      border-bottom: 1px solid rgba(230,126,34,.2); margin-bottom: 6px;
       color: var(--gray2);
     }
     .lb-col-hdr-name { flex: 1; }
@@ -271,7 +272,7 @@
     .admin-auth-wrap { max-width: 380px; margin: 40px auto; text-align: center; }
     .admin-auth-wrap h2 { color: var(--gold); margin-bottom: 12px; }
     .admin-auth-wrap p  { color: var(--gray); font-size: 14px; margin-bottom: 20px; }
-    .asec { background: var(--bg2); border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
+    .asec { background: var(--bg2); border: 1px solid #5a3a24; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
     .asec h3 { font-size: 13px; text-transform: uppercase; color: var(--gray); letter-spacing: 1px; margin-bottom: 14px; }
     .asec p { color: var(--gray); font-size: 13px; margin-bottom: 12px; }
     .afg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
@@ -301,7 +302,7 @@
       transition: all .15s;
     }
     .size-btn:hover  { border-color: var(--mint2); color: var(--white); }
-    .size-btn.active { border-color: var(--mint); color: var(--mint); background: rgba(0,184,148,.1); }
+    .size-btn.active { border-color: var(--mint); color: var(--mint); background: rgba(230,126,34,.1); }
     .abtn {
       padding: 10px 18px; font-size: 14px; font-weight: 600;
       border: none; border-radius: 8px; cursor: pointer; transition: all .15s;
@@ -350,10 +351,10 @@
   <div class="auth-card">
     <div class="auth-logo">
       <img src="logo-mark.png" alt="planHub" style="height:64px;width:auto;margin-bottom:8px" onerror="this.style.display='none'">
-      <div style="font-size:40px;margin-bottom:4px">⬜</div>
+      <div style="font-size:40px;margin-bottom:4px">🦃</div>
     </div>
     <div class="auth-title"><span style="color:var(--mint)">planHub</span> Lucky Squares</div>
-    <div class="auth-sub">Sign in with your PlanHub Google account to play</div>
+    <div class="auth-sub"><strong style="color:var(--mint2)">🍂 Thanksgiving Edition 🍂</strong><br>Sign in with your PlanHub Google account to play</div>
     <button class="btn-google" onclick="signIn()">
       <svg width="20" height="20" viewBox="0 0 48 48">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -374,7 +375,7 @@
       <img src="logo-mark.png" alt="planHub" onerror="this.style.display='none'">
       <div>
         <div class="header-title"><span class="brand">planHub</span> Lucky Squares</div>
-        <div class="header-subtitle">⬜ Sales Contest</div>
+        <div class="header-subtitle">🦃 Thanksgiving Edition</div>
       </div>
     </div>
     <div class="header-right">
@@ -389,7 +390,7 @@
   </header>
 
   <div class="tab-nav">
-    <div class="nav-tab active" data-tab="play"  onclick="switchTab('play')">⬜ Play</div>
+    <div class="nav-tab active" data-tab="play"  onclick="switchTab('play')">🦃 Play</div>
     <div class="nav-tab"        data-tab="admin" onclick="switchTab('admin')">⚙️ Admin</div>
   </div>
 
@@ -398,12 +399,12 @@
 
     <!-- Left: Rules -->
     <div class="rules-panel">
-      <div class="rp-header">⬜ How to Play</div>
-      <div class="rp-rule"><span class="rp-icon">🎯</span><div>Pick any <strong>unrevealed square</strong> to reveal your prize</div></div>
+      <div class="rp-header">🦃 How to Play</div>
+      <div class="rp-rule"><span class="rp-icon">🥧</span><div>Pick any <strong>unrevealed square</strong> to reveal your prize</div></div>
       <div class="rp-rule"><span class="rp-icon">💰</span><div>Each square hides a <strong>cash prize</strong> (or a miss)</div></div>
-      <div class="rp-rule"><span class="rp-icon">🎲</span><div>Picks bank — claim them <strong>whenever you want</strong></div></div>
+      <div class="rp-rule"><span class="rp-icon">🌽</span><div>Picks bank — claim them <strong>whenever you want</strong></div></div>
       <hr class="rp-divider">
-      <div class="rp-header" style="margin-top:4px">💼 Earning Picks</div>
+      <div class="rp-header" style="margin-top:4px">🍂 Earning Picks</div>
       <div class="rp-rule"><span class="rp-icon">💼</span><div><strong>AEs:</strong> 1 pick per Closed Won deal today</div></div>
       <div class="rp-rule"><span class="rp-icon">🔄</span><div>Picks sync automatically every <strong>30 min</strong></div></div>
     </div>
@@ -632,7 +633,7 @@ auth.onAuthStateChanged(user => {
   if (!roster) {
     document.getElementById('auth-screen').innerHTML = `
       <div class="auth-card">
-        <div class="auth-logo">⬜</div>
+        <div class="auth-logo">🦃</div>
         <div class="auth-title" style="font-size:20px">Not on the roster</div>
         <p style="color:var(--gray);margin:14px 0">Contact Josh to be added.</p>
         <button class="abtn d" onclick="auth.signOut()">Sign Out</button>
@@ -751,6 +752,10 @@ function refreshUI() {
 // ═══════════════════════════════════════════════
 // BOARD RENDER
 // ═══════════════════════════════════════════════
+// Unclaimed-square icons: a fixed mix of turkeys, footballs and plates
+const SQ_ICONS = ['🦃', '🏈', '🍽️'];
+function sqIcon(i) { return SQ_ICONS[(i * 7 + Math.floor(i / 3)) % SQ_ICONS.length]; }
+
 function renderBoard() {
   const boardSize  = settings.boardSize || 25;
   const hasBoard   = Object.keys(boardState).length > 0;
@@ -786,7 +791,7 @@ function renderBoard() {
 
     if (!claimed) {
       if (hasPicks) { cls += ' pickable'; }
-      inner = `<div class="sq-qmark">?</div>`;
+      inner = `<div class="sq-qmark">${sqIcon(i)}</div>`;
     } else if (isMe) {
       cls += isMiss ? ' claimed-miss' : ' claimed-me';
       const myShort = me.name.split(' ')[0];
@@ -824,7 +829,7 @@ async function claimSquare(idx) {
   const el = document.getElementById(`sq-${idx}`);
   if (el) {
     el.className = 'sq sq-revealing';
-    el.innerHTML = `<div class="sq-qmark">?</div>`;
+    el.innerHTML = `<div class="sq-qmark">${sqIcon(idx)}</div>`;
   }
   playSound('drumroll');
 
@@ -868,7 +873,7 @@ async function claimSquare(idx) {
     ]);
 
     if (!result.committed) {
-      if (el) { el.className = 'sq'; el.innerHTML = `<div class="sq-qmark">?</div>`; }
+      if (el) { el.className = 'sq'; el.innerHTML = `<div class="sq-qmark">${sqIcon(idx)}</div>`; }
       renderBoard();
       toast('Someone else got that one — pick again!');
       claiming = false;
@@ -1133,7 +1138,7 @@ function launchConfetti() {
   const ctx = cv.getContext('2d');
   cv.width  = window.innerWidth;
   cv.height = window.innerHeight;
-  const COLORS = ['#00b894','#70d7c2','#c2eee5','#fdcb6e','#0984e3','#e17055','#fff'];
+  const COLORS = ['#e67e22','#f5b041','#c0392b','#fdcb6e','#8e5a2b','#9ab83c','#fff'];
   const pts = Array.from({ length: 120 }, () => ({
     x: Math.random() * cv.width, y: Math.random() * -cv.height * 1.2,
     w: Math.random() * 10 + 5,   h: Math.random() * 5 + 3,
